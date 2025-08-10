@@ -1,0 +1,7 @@
+# Some configs to make sure dass can work well.
+
+[llm]
+provider = "Antropic"   # OpenAI, Qwen, Anthropic, Deepseek, Google, OpenRouter
+api_key = "xx"    # Your API KEY
+base_url = "xx"   # Base url
+model = "Claude-4 sonnet"      # model name which one you select
