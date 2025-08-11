@@ -19,8 +19,8 @@ class LLMConfig(BaseModel):
     api_key: str
     model: str
 
-def load_config() -> LLMConfig:
-    """ load config.toml and make sure everything works well.
+def load_llm_config() -> LLMConfig:
+    """ load llm config in config.toml and make sure everything works well.
     Developers can set the enviroment virables in os to avoid leaking your api_key or something valuable.
 
     Returns:
