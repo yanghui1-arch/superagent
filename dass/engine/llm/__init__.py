@@ -25,7 +25,7 @@ def init():
     _config:LLMConfig = load_llm_config()
     _llm = LLM(base_url=_config.base_url, api_key=_config.base_url, model=_config.model)
 
-def generate(prompts:list[Message], params:Optional[LLMGenParams]=None, asynchronous:bool=False) -> Union[str, ChatCompletion]:
+async def generate(prompts:list[Message], params:Optional[LLMGenParams]=None, asynchronous:bool=False) -> Union[str, ChatCompletion]:
     """ generate response from llm 
     using `asynchronous` to control generation is synchronously or not.
     If params is `None` generate will offer a conservative generation parameter.
@@ -44,4 +44,4 @@ def generate(prompts:list[Message], params:Optional[LLMGenParams]=None, asynchro
 
     if not params:
         params = LLMGenParams(stream=False, temperature=0.8)
-    return asyncio.run(main=_llm.generate(prompts=prompts, params=params, asynchronous=asynchronous))
+    return _llm.generate(prompts=prompts, params=params, asynchronous=asynchronous)
