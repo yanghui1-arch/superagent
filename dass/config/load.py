@@ -19,6 +19,12 @@ class LLMConfig(BaseModel):
     api_key: str
     model: str
 
+class QDrantConfig(BaseModel):
+    """ QDrant vector database config """
+
+    host: str
+    port: int
+
 def load_llm_config() -> LLMConfig:
     """ load llm config in config.toml and make sure everything works well.
     Developers can set the enviroment virables in os to avoid leaking your api_key or something valuable.
@@ -44,3 +50,22 @@ def load_llm_config() -> LLMConfig:
         
         print(f"User select {provider}'s model: {model}.")
         return LLMConfig(provider=provider, base_url=base_url, api_key=api_key, model=model)
+    
+def load_qdrant_config() -> QDrantConfig:
+    """ load qdrant config from config.toml """
+    
+    with open("../config.toml", "rb") as f:
+        config:Dict[str, any] = tomllib.load(f)
+        if 'qdrant' not in config.keys():
+            raise KeyError("please make sure `qdrant` field is in config.toml.")
+        
+        qdrant_config = config["qdrant"]
+        if not isinstance(qdrant_config, dict):
+            raise TypeError("please make sure qdrant_config is a dict type.")
+        
+        host = qdrant_config.get("host", None)
+        port = qdrant_config.get("port", None)
+        if not host or not port:
+            raise KeyError("please make sure your `host` and `port` under [qdrant] both exist and their values are valid. Default `host`=`localhost` and `port`=6333.")
+
+        return QDrantConfig(host=qdrant_config['host'])

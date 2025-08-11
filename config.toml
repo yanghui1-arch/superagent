@@ -1,7 +1,12 @@
 # Some configs to make sure dass can work well.
+lang = "zh-simplified"         # Your work language. It's now support `zh-simplified` and `en`
 
 [llm]
-provider = "Antropic"   # OpenAI, Qwen, Anthropic, Deepseek, Google, OpenRouter
-api_key = "xx"    # Your API KEY
-base_url = "xx"   # Base url
+provider = "Antropic"          # OpenAI, Qwen, Anthropic, Deepseek, Google, OpenRouter
+api_key = "xx"                 # Your API KEY
+base_url = "xx"                # Base url
 model = "Claude-4 sonnet"      # model name which one you select
+
+[qdrant]
+host = "localhost"             # your qdrant host, default to `localhost`
+port = 6333                    # use your qdrant port, default to 6333
