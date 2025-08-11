@@ -5,7 +5,7 @@ from typing import List, Dict
 
 from pydantic import BaseModel
 from uuid import UUID
-from ..message import Message
+from dass.engine.message import Message
 
 # Message or Memory
 Context = Message
