@@ -10,3 +10,5 @@ model = "Claude-4 sonnet"      # model name which one you select
 [qdrant]
 host = "localhost"             # your qdrant host, default to `localhost`
 port = 6333                    # use your qdrant port, default to 6333
+dim = 1024                     # dim of embedding information default to 1024. If you don't know the concept of embedding dim just default is fine.
+distance_type = "cosine"       # distance type default to cosine. If you don't know the concept of embedding search. Default is the best.

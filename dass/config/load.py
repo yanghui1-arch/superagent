@@ -24,6 +24,8 @@ class QDrantConfig(BaseModel):
 
     host: str
     port: int
+    dim: int
+    distance_type: str
 
 def load_llm_config() -> LLMConfig:
     """ load llm config in config.toml and make sure everything works well.
@@ -65,7 +67,9 @@ def load_qdrant_config() -> QDrantConfig:
         
         host = qdrant_config.get("host", None)
         port = qdrant_config.get("port", None)
+        dim = qdrant_config.get("dim", 1024)
+        distance_type = qdrant_config.get("distance_type", "cosine")
         if not host or not port:
             raise KeyError("please make sure your `host` and `port` under [qdrant] both exist and their values are valid. Default `host`=`localhost` and `port`=6333.")
 
-        return QDrantConfig(host=qdrant_config['host'])
+        return QDrantConfig(host=host, port=port, dim=dim, distance_type=distance_type)
