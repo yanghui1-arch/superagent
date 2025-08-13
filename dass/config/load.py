@@ -42,7 +42,7 @@ def load_llm_config() -> LLMConfig:
     Returns:
         LLMConfig: user llm config
     """
-    with open("../config.toml", "rb") as f:
+    with open("./config.toml", "rb") as f:
         config:Dict[str, any] = tomllib.load(f)
         if 'llm' not in config.keys():
             raise KeyError("please make sure `llm` field is in config.toml.")
