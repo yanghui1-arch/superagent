@@ -12,6 +12,7 @@ __all__ = [
     "Condition",
     "Record",
     "init",
+    "exist_collections_name",
     "upsert",
     "delete",
     "search"
@@ -22,6 +23,18 @@ _manager:Optional[QdrantManager] = None
 def init(config:QDrantConfig):
     global _manager
     _manager = QdrantManager(config=config)
+
+def exist_collections_name() -> list[str]:
+    """ get all existing collections name 
+    
+    Returns:
+        list[str]: existing collections name in qdrant
+    """
+
+    global _manager
+    if not _manager:
+        raise SystemError("Please call qdrant.init() first before calling qdrant.exist_collections_name().")
+    return _manager.exists_collections()
 
 def upsert(collection_name:str, records:Record | list[Record]) -> UpdateResult:
     """ insert and update points in collection 
