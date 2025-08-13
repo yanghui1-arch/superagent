@@ -51,12 +51,14 @@ def load_llm_config() -> LLMConfig:
         if not isinstance(llm_config, dict):
             raise TypeError("please make sure llm_config is a dict type.")
         
-        provider = llm_config.get("provider", None) or os.environ.get("provider", None)
-        base_url = llm_config.get("base_url", None) or os.environ.get("base_url", None)
-        api_key = llm_config.get("api_key", None) or os.environ.get("api_key", None)
-        model = llm_config.get("model", None) or os.environ.get("model", None)
+        provider = llm_config.get("provider", None) or os.environ.get("llm_provider", None)
+        base_url = llm_config.get("base_url", None) or os.environ.get("llm_base_url", None)
+        api_key = llm_config.get("api_key", None) or os.environ.get("llm_api_key", None)
+        model = llm_config.get("model", None) or os.environ.get("llm_model", None)
         if not provider or not base_url or not api_key or not model:
-            raise KeyError("please check config.toml and make sure llm have 4 parameters: `provider`, `base_url`, `api_key` and `model`. Please dont make them as an empty string.")
+            raise KeyError("" \
+            "please check config.toml and make sure llm have 4 parameters: `provider`, `base_url`, `api_key` and `model`. " \
+            "Don't make them as an empty string or you can set `llm_provider`, `llm_base_url`, `llm_api_key`, `llm_model` in os enviroment. It's recommend for developers not users.")
         
         print(f"User select {provider}'s model: {model}.")
         return LLMConfig(provider=provider, base_url=base_url, api_key=api_key, model=model)
