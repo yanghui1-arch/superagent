@@ -2,10 +2,16 @@
 lang = "zh-simplified"         # Your work language. It's now support `zh-simplified` and `en`
 
 [llm]
-provider = "Antropic"          # OpenAI, Qwen, Anthropic, Deepseek, Google, OpenRouter
+provider = "Antropic"          # OpenAI, Qwen, Anthropic, Deepseek, Google, OpenRouter or local
 api_key = "xx"                 # Your API KEY
 base_url = "xx"                # Base url
 model = "Claude-4 sonnet"      # model name which one you select
+
+[embedding]
+provider = "Qwen"              # OpenAI, Qwen, Anthropic, Deepseek, Google, OpenRouter or local
+api_key = "xx"                 # Your API KEY, `EMPTY` if you use ollama
+base_url = "xx"                # base url, `localhost:11434` if you use ollama
+model = "embedding-latest"     # embedding model name
 
 [qdrant]
 host = "localhost"             # your qdrant host, default to `localhost`
