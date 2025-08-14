@@ -4,13 +4,15 @@ from typing import Optional, List
 from qdrant_client.models import PointStruct, UpdateResult, SearchRequest, ScoredPoint
 
 from .cli import QdrantManager
-from .schema import Condition, Record
+from .schema import Condition, Record, Filter, AtLeastMatchNConditions
 from ..config.load import QDrantConfig
 
 __all__ = [
     "QdrantManager",
     "Condition",
     "Record",
+    "Filter",
+    "AtLeastMatchNConditions",
     "init",
     "exist_collections_name",
     "upsert",
@@ -56,22 +58,22 @@ def upsert(collection_name:str, records:Record | list[Record]) -> UpdateResult:
     points:List[PointStruct] = [record.to_point() for record in records]
     return _manager.upsert(collection_name=collection_name, points=points)
 
-def delete_points(collection_name:str, to_delete_points_ids:Optional[list[UUID] | UUID]=None, conditions:Optional[list[Condition] | Condition]=None) -> UpdateResult:
+def delete_points(collection_name:str, to_delete_points_ids:Optional[list[UUID] | UUID]=None, filter:Optional[Filter]=None) -> UpdateResult:
     """ Delete points by ids or conditions.
-    Pass `to_delete_points_ids` -> delete these ids points. Pass `conditions` -> delete points which satisfy all these conditions.
+    Pass `to_delete_points_ids` -> delete these ids points. Pass `filter` -> delete points using a filter
     It's forbidden to pass them both together.
 
     Args:
         collection_name(str): collection to delete points
         to_delete_points_ids(Optional[list[UUID] | UUID]): points ids to delete. Default to None.
-        conditions(Optional[list[Condition] | Condition]): conditions that caller want to delete satisying these conditions points
+        filter(Optional[Filter]): a filter that includes many conditions to match
     
     Returns:
         UpdateResult: qdrant update result
 
     Raises:
-            ValueError: 1. Not pass to_delete_points_ids or conditions.
-                        2. Pass to_delete_points_ids and conditions together.
+            ValueError: 1. Not pass to_delete_points_ids or a filter.
+                        2. Pass to_delete_points_ids and filter together.
                         3. Pass a not existing collection name
             SystemError: call it but not init _manager
     """
@@ -79,7 +81,7 @@ def delete_points(collection_name:str, to_delete_points_ids:Optional[list[UUID] 
     global _manager
     if not _manager:
         raise SystemError("Please call qdrant.init() first before calling qdrant.delete().")
-    return _manager.delete_points(collection_name=collection_name, to_delete_points_ids=to_delete_points_ids, conditions=conditions)
+    return _manager.delete_points(collection_name=collection_name, to_delete_points_ids=to_delete_points_ids, filter=filter)
 
 def search(collection_name:str, requests:list[SearchRequest] | SearchRequest) -> List[List[ScoredPoint]]:
     """ qdrant search

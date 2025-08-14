@@ -1,15 +1,15 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
 from qdrant_client.models import PointStruct
 from qdrant_client.models import UpdateResult
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from qdrant_client.models import Filter as QdrantFilter
 from qdrant_client.models import SearchRequest, ScoredPoint
 
-from .schema import Condition
+from .schema import Condition, Filter
 from dass.config.load import QDrantConfig
 
 
@@ -80,25 +80,25 @@ class QdrantManager(BaseModel):
         self,
         collection_name:str,
         to_delete_points_ids:Optional[list[str] | str]=None,
-        conditions:Optional[list[Condition] | Condition]=None
+        filter: Optional[Filter]=None
     ) -> UpdateResult:
-        """ delete points by id or select conditions
-        Pass only one parameter of to_delete_points_id and conditions. If pass to_delete_points_id qdrant will delete by ids. On the contrary pass conditions qdrant will delete by conditions.
+        """ delete points by id or a filter.
+        Pass only one parameter of to_delete_points_id and filter. If pass to_delete_points_id qdrant will delete by ids. On the contrary pass filter qdrant will delete by a filter.
 
         Args:
             to_delete_points_id(Optional[list[str] | str]): points ids to delete. `str` type means just one. Default to None
-            conditions(Optional[list[Condition]]): delete points which satisfied all conditions. Default to None
+            filter(Optional[Filter]): delete points by a filter. Default to None
         
         Returns:
             UpdateResult: qdrant update result
         
         Raises:
-            ValueError: 1. Not pass to_delete_points_ids or conditions.
-                        2. Pass to_delete_points_ids and conditions together.
+            ValueError: 1. Not pass to_delete_points_ids or a filter.
+                        2. Pass to_delete_points_ids and filter together.
                         3. Pass a not existing collection name
         """
 
-        if (not to_delete_points_ids and not conditions) or (to_delete_points_ids and conditions):
+        if (not to_delete_points_ids and not filter) or (to_delete_points_ids and filter):
             raise ValueError("Please make one but only one of `to_delete_points_id` and `conditions` id exist. Don't pass two or none.")
         
         if not self._client.collection_exists(collection_name=collection_name):
@@ -109,15 +109,7 @@ class QdrantManager(BaseModel):
                 to_delete_points_ids = [to_delete_points_ids]
             return self._client.delete(collection_name=collection_name, points_selector=to_delete_points_ids)
         
-        field_must_conditions:List[FieldCondition] = []
-        if isinstance(conditions, Condition):
-            conditions = [conditions]
-        for condition in conditions:
-            key = condition.field_key
-            value = condition.field_value
-            match_value = MatchValue(value=value)
-            field_must_conditions.append(FieldCondition(key=key, match=match_value))
-        draft_filter:Filter = Filter(must=field_must_conditions)
+        draft_filter:QdrantFilter = filter.to_qdrant_filter()
         return self._client.delete(collection_name=collection_name, points_selector=draft_filter)
 
     def search(
