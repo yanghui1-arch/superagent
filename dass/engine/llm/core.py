@@ -30,7 +30,7 @@ class LLM(BaseModel):
     async def generate(self, prompts:list[Message], params:LLMGenParams, asynchronous:bool=False) -> Union[str, ChatCompletion]:
         if not asynchronous:
             return self._generate_sync(prompts=prompts, params=params)
-        return self._generate_async(prompts=prompts, params=params)
+        return await self._generate_async(prompts=prompts, params=params)
 
     def _generate_sync(self, prompts:list[Message], params:LLMGenParams) -> str:
         _prompts = [prompt.model_dump(exclude_none=True) for prompt in prompts]

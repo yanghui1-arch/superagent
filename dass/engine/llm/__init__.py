@@ -44,4 +44,4 @@ async def generate(prompts:list[Message], params:Optional[LLMGenParams]=None, as
 
     if not params:
         params = LLMGenParams(stream=False, temperature=0.8)
-    return _llm.generate(prompts=prompts, params=params, asynchronous=asynchronous)
+    return await _llm.generate(prompts=prompts, params=params, asynchronous=asynchronous)
