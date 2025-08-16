@@ -118,14 +118,14 @@ class QdrantManager(BaseModel):
         requests: list[SearchRequest] | SearchRequest
     ) -> list[list[ScoredPoint]]:
         """ search relevant points batched 
-        Return explaination -> (k_requests, top_p_relevant_points). top_p_relevant is decided by different request so the second dim is not the same.
+        Return explaination -> (k_requests, top_k_relevant_points). top_k_relevant is decided by different request so the second dim is not the same.
 
         Args:
             collection_name(str): search in collection_name
             requests(list[SearchRequest] | SearchRequest): one or more request
         
         Returns:
-            list[list[ScoredPoint]]: `top_p` relative points corresponds to every request.
+            list[list[ScoredPoint]]: `top_k` relative points corresponds to every request.
         """
 
         if not self._client.collection_exists(collection_name=collection_name):
