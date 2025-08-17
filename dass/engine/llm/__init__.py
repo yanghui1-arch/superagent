@@ -22,7 +22,7 @@ def init():
     """ llm engine init """
 
     global _config, _llm
-    _config:LLMConfig = load_llm_config()
+    _config = load_llm_config()
     _llm = LLM(base_url=_config.base_url, api_key=_config.base_url, model=_config.model)
 
 async def generate(prompts:list[Message], params:Optional[LLMGenParams]=None, asynchronous:bool=False) -> Union[str, ChatCompletion]:
