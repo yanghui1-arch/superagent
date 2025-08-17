@@ -34,6 +34,7 @@ class EmbeddingConfig(BaseModel):
     base_url: str
     api_key: str
     model: str
+    dim: int
 
 def load_llm_config() -> LLMConfig:
     """ load llm config in config.toml and make sure everything works well.
@@ -84,7 +85,6 @@ def load_qdrant_config() -> QDrantConfig:
 
         return QDrantConfig(host=host, port=port, dim=dim, distance_type=distance_type)
 
-
 def load_embedding_config() -> EmbeddingConfig:
     """ load embedding config in config.toml and make sure everything works well.
     Developers can set the enviroment virables in os enviroment to avoid leaking your api_key or something valuable.
@@ -105,11 +105,12 @@ def load_embedding_config() -> EmbeddingConfig:
         base_url = embedding_config.get("base_url", None) or os.environ.get("embedding_base_url", None)
         api_key = embedding_config.get("api_key", None) or os.environ.get("embedding_api_key", None)
         model = embedding_config.get("model", None) or os.environ.get("embedding_model", None)
+        dim = embedding_config.get("dim", None) or os.environ.get("embedding_dim", None)
         if not provider or not base_url or not api_key or not model:
             raise KeyError("" \
             "please check config.toml and make sure embedding have 4 parameters: `provider`, `base_url`, `api_key` and `model`. " \
             "Dont make them as an empty string or you can set `embedding_provider`, `embedding_base_url`, `embedding_api_key` and `embedding_model` in os enviroment.")
         
         print(f"User select {provider}'s embedding model: {model}.")
-        return EmbeddingConfig(provider=provider, base_url=base_url, api_key=api_key, model=model)
+        return EmbeddingConfig(provider=provider, base_url=base_url, api_key=api_key, model=model, dim=dim)
     

@@ -12,6 +12,7 @@ provider = "Qwen"              # OpenAI, Qwen, Anthropic, Deepseek, Google, Open
 api_key = "xx"                 # Your API KEY, `EMPTY` if you use ollama
 base_url = "xx"                # base url, `localhost:11434` if you use ollama
 model = "embedding-latest"     # embedding model name
+dim = 1024                     # embed vector dimensions. Default to 1024. if you don't know what dimension is please don't change it.
 
 [qdrant]
 host = "localhost"             # your qdrant host, default to `localhost`
