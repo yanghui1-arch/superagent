@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 from openai.types.chat import ChatCompletion
 
-from ...engine.llm.core import LLM, LLMGenParams
+from .core import LLM, LLMGenParams
 from ..message import Message
 from ...config.load import LLMConfig
 from ...config.load import load_llm_config
