@@ -4,7 +4,7 @@ from openai import OpenAI
 from openai.types.embedding import Embedding as EmbedResult
 
 from ...config.load import EmbeddingConfig
-import qdrant
+from ... import qdrant
 from .schema import Memory, MemorySearchRequest, MemorySearchResult, CollectionSearchResult
 
 class Embedding(BaseModel):

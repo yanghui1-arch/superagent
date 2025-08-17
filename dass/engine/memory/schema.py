@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Optional, Literal, List
 from pydantic import BaseModel
 
-import qdrant
-from qdrant import Filter, Record
+from ... import qdrant
+from ...qdrant import Filter, Record
 
 class MemoryPayload(BaseModel):
     """ Memory payload 
