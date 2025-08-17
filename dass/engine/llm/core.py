@@ -25,7 +25,7 @@ class LLM(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def model_post_init(self):
+    def model_post_init(self, context):
         self.async_client:AsyncOpenAI = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
         self.client:OpenAI = OpenAI(base_url=self.base_url, api_key=self.api_key)
          
