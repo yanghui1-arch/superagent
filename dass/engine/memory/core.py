@@ -12,17 +12,19 @@ class Embedding(BaseModel):
     base_url: str
     api_key: str
     model: str
+    dim: int
     _cli: Optional[OpenAI] = None
 
     def __post_init__(self):
+        print(f"{self.__class__.__name__} is initializing embedding client...")
         self._cli = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        print(f"{self.__class__.__name__} has initialized embedding client!")
 
-    def __call__(self, query:str | list[str], dim:int) -> List[List[float]]:
+    def __call__(self, query:str | list[str]) -> List[List[float]]:
         """ embedding
 
         Args:
             query(str | list[str]): query can be one or a batch
-            dim(int): embedding dimensions which is decided generally by `MemoryEngine`
         
         Returns:
             List[List[float]]: (query_number, embeddings)
@@ -30,7 +32,7 @@ class Embedding(BaseModel):
         response = self._cli.embeddings.create(
             input=query,
             model=self.model,
-            dimensions=dim
+            dimensions=self.dim
         )
         data:List[EmbedResult] = response.data
         embeddings:List[List[float]] = [embed.embedding for embed in data]
@@ -46,8 +48,6 @@ class MemoryEngine(BaseModel):
         config(EmbeddingConfig): embedding config
         embedding(Optional[Embedding]): to embed memory
     """
-
-    dim: int = 1024
     config: EmbeddingConfig
     embedding: Optional[Embedding] = None
     
@@ -56,7 +56,8 @@ class MemoryEngine(BaseModel):
             provider=self.config.provider,
             base_url=self.config.base_url,
             api_key=self.config.api_key,
-            model=self.config.model
+            model=self.config.model,
+            dim=self.config.dim
         )
     
     def _embedding(self, text:str | list[str]) -> List[List[float]]:
@@ -69,7 +70,7 @@ class MemoryEngine(BaseModel):
             List[List[float]]: (query_number, embeddings)
         """
 
-        return self.embedding(query=text, dim=self.dim)
+        return self.embedding(query=text)
 
     def _transfer_to_qdrant_search_request(self, memory_search_request:MemorySearchRequest) -> qdrant.SearchRequest:
         """ transfer a MemorySearchRequest to Qdrant search request 
