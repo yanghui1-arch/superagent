@@ -8,6 +8,17 @@ import qdrant
 from .schema import Memory, MemorySearchRequest, MemorySearchResult, CollectionSearchResult
 
 class Embedding(BaseModel):
+    """ Embedding model
+    
+    Args:
+        provider(str): provider to embed. Generally `Google`, `Qwen`, `OpenAI`, `Anthropic`, `OpenRouter` or others
+        base_url(str): embedding model base url
+        api_key(str): api key
+        model(str): model name
+        dim(int): embedding dimensions. Generally be the same as QDrantConfig.dim
+        _cli(Optional[OpenAI]): embedding client. Default to `None`.
+    """
+
     provider: str
     base_url: str
     api_key: str
@@ -48,6 +59,7 @@ class MemoryEngine(BaseModel):
         config(EmbeddingConfig): embedding config
         embedding(Optional[Embedding]): to embed memory
     """
+    
     config: EmbeddingConfig
     embedding: Optional[Embedding] = None
     
