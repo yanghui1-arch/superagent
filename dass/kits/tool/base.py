@@ -173,17 +173,3 @@ def _parse_arg_annotation(annotation) -> str:
     if s.startswith("<class '") and s.endswith("'>"):
         return s[8:-2]
     return s
-
-if __name__ == "__main__":
-    @tool
-    def count(a:int, b:int, c:Optional[int]=None):
-        """count
-         
-        Args:
-            a(int): to add
-            b(int): added number
-            c(Optional[int]): test Optional type. Default to `None`
-        """
-        return a + b
-    
-    print(count.model_dump(exclude_none=True))
