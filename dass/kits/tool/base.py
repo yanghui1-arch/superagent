@@ -65,10 +65,10 @@ class Tool(BaseModel):
         }
 
 class ResultFlag(Enum):
-    SUCCESS: 200
-    ERROR: 400
-    NOT_ENOUGH_PARAMS: 401
-    PARSE_FAILED: 402
+    SUCCESS = 200
+    ERROR = 400
+    NOT_ENOUGH_PARAMS = 401
+    PARSE_FAILED = 402
 
 class ToolResult(BaseModel):
     code: ResultFlag
