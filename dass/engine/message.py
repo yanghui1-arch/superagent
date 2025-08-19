@@ -145,25 +145,25 @@ class ToolCall(BaseModel):
 class Message(BaseModel):
     role: Literal["user", "assistant", "system", "tool"]
     content: Union[str, list[MultiModalitySchema]]
-    partial: Optional[bool]
-    tool_calls: Optional[list[ToolCall]]
-    tool_call_id: Optional[str]
+    partial: Optional[bool] = None
+    tool_calls: Optional[list[ToolCall]] = None
+    tool_call_id: Optional[str] = None
 
     @classmethod
     def user_message(cls, content: Union[str, list[MultiModalitySchema]]):
-        return Message('user', content=content)
+        return cls(role='user', content=content)
     
     @classmethod
     def assistant_message(cls, content, partial:Optional[bool]=None, tool_calls:list[ToolCall]=None):
-        return Message("assistant", content=content, partial=partial, tool_calls=tool_calls)
+        return cls(role="assistant", content=content, partial=partial, tool_calls=tool_calls)
     
     @classmethod
     def system_message(cls, content: str):
-        return Message("system", content=content)
+        return cls(role="system", content=content)
     
     @classmethod
     def tool_message(cls, content: str, tool_call_id:Optional[str]):
-        return Message("tool", content=content, tool_call_id=tool_call_id)
+        return cls(role="tool", content=content, tool_call_id=tool_call_id)
     
     def to_dict(self):
         msg_dict = {

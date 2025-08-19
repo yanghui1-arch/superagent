@@ -8,12 +8,12 @@ from ..message import Message
 
 class LLMGenParams(BaseModel):
     stream: bool = False
-    stream_options: Optional[dict]
-    temperature: Optional[float]
-    top_p: Optional[float]
-    top_k: Optional[int]
-    presence_penalty: Optional[float]
-    response_format: Optional[dict]
+    stream_options: Optional[dict] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    presence_penalty: Optional[float] = None
+    response_format: Optional[dict] = None
     
 class LLM(BaseModel):
     base_url: str
