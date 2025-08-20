@@ -1,19 +1,40 @@
 import inspect
 import re
 from textwrap import dedent
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, Dict
 from enum import Enum
 from pydantic import BaseModel
+from pydantic import Field
+
+from .parse_type_hint import parse_args_annotation
 
 class ParamProperty(BaseModel):
     """ tool parameters description
+    At least one of `type` and `anyOf` should exist in ParamProperty.
+    `anyOf` is for `Literal` or `UionType` and meanwhile type is None.
     
     Args:
-        type(str): type of parameter
+        type(Optional[str]): parameter type. Default to `None`.
         description(str): describe parameter is what
+        additionalProperties(Optional["SubParamProerpty"]): addtional properties for `dict` type. Here camel written is conveinent for converting to json schema
+        items(Optional["SubParamProperty"]): item element property for `list or tuple` type. Default to None.
+        nullable(Optional[bool]): whether the sub parameter can be null
+        anyOf(Optional[list]): allow parameter can be anyone of these types. Default to None.
+
+    Raises:
+        ValueError: if `type` and `anyOf` is None at the same time.
     """
-    type: str
+
+    type: Optional[str] = None
     description: str
+    additionalProperties: Optional["ParamProperty"] = None
+    items: Optional["ParamProperty"] = None
+    anyOf: Optional[list] = None
+    nullable: Optional[bool] = None
+
+    def model_post_init(self, context):
+        if self.type is None and self.anyOf is None:
+            raise ValueError("please check your parameters in tool declearation exists at least one of type or anyOf.")
 
 class ToolParameters(BaseModel):
     """ parameters to call tool
@@ -50,10 +71,11 @@ class Tool(BaseModel):
         # will output a standard openai format prompt
         ```
     """
+    
     name: str
     description: str
     parameters: Optional[ToolParameters] = None
-    func: Callable
+    func: Callable = Field(exclude=True)
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, *kwargs)
@@ -76,7 +98,8 @@ class ToolResult(BaseModel):
 
 def tool(func:callable):
     """ tool wrapper
-    Convert a function to a tool using @tool
+    Easily convert a function to a tool using @tool
+
     Example:
     ```python
     @tool
@@ -100,10 +123,10 @@ def tool(func:callable):
     #           'type': 'object', 
     #           'properties': 
     #               {
-    #                   'a': {'type': 'int', 'description': 'to add'}, 
-    #                   'b': {'type': 'int', 'description': 'added number'}, 
-    #                   'c': {'type': 'Optional', 'description': 'test Optional type. Default to `None`'}
-    #               }, 
+    #                   'a': {'type': 'integer', 'description': 'to add'},
+    #                   'b': {'type': 'integer', 'description': 'added number'}, 
+    #                   'c': {'type': 'integer', 'description': 'test Optional type. Default to `None`', 'nullable': True}
+    #               },
     #           'required': ['a', 'b']
     #       },
     #   'func': <function count at 0x0000023EF3FA5EE0>
@@ -132,9 +155,13 @@ def tool(func:callable):
 
     signature:inspect.Signature = inspect.signature(func)
     params_dict = signature.parameters
+
+    # tuple element content
+    # (      0       ,                      1                         ,          2           ,              3)
+    # (parameter_name, a complex dict to describe parameter properties, parameter description, parameter's default value)
     arguments:list[tuple] = []
     for param_name, param in params_dict.items():
-        type_annotation = _parse_arg_annotation(param.annotation)
+        type_annotation:Dict[str, str|object] = parse_args_annotation(param.annotation)
         default_value = param.default
         arguments.append((param_name, type_annotation, parsed_params[param_name], default_value))
     
@@ -142,11 +169,30 @@ def tool(func:callable):
     required:Optional[list[str]] = []
     for argument in arguments:
         name = argument[0]
-        arg_type = argument[1]
+        arg_type_parsed = argument[1]
         arg_desc = argument[2]
         arg_default_value = argument[3]
         
-        properties[name] = ParamProperty(type=arg_type, description=arg_desc)
+        arg_type = arg_type_parsed.get("type", None)
+        additional_properties = arg_type_parsed.get("additionalProperties", None)
+        items = arg_type_parsed.get("items", None)
+        anyOf = arg_type_parsed.get("anyOf", None)
+        nullable = arg_type_parsed.get("nullable", None)
+        
+        if additional_properties:
+            additional_properties = ParamProperty(**additional_properties)
+        if items:
+            items = ParamProperty(**items)
+
+        properties[name] = ParamProperty(
+            type=arg_type,
+            description=arg_desc,
+            additionalProperties=additional_properties,
+            items=items,
+            anyOf=anyOf,
+            nullable=nullable
+        )
+        
         if arg_default_value is inspect.Parameter.empty:
             required.append(name)
     required = None if len(required) == 0 else required
@@ -160,16 +206,3 @@ def tool(func:callable):
         ),
         func=func
     )
-
-def _parse_arg_annotation(annotation) -> str:
-    """ parse arg annotation
-    Convert simple type or a complex type to a string which contains a plain type string.
-    Use annotation.__name__ works well in a simple type. However if type is complex such as List[str | int], Optional[str].
-    it's not clear in Optional and List with annotation.__name__.
-    """
-
-    s = str(annotation).replace("typing.", "", 1)
-    # simple type such as <class 'int'>
-    if s.startswith("<class '") and s.endswith("'>"):
-        return s[8:-2]
-    return s
