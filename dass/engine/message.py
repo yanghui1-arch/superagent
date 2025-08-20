@@ -1,6 +1,7 @@
 import json
 from typing import Literal, Union, Optional
 from pydantic import BaseModel
+from openai.types.chat.chat_completion_message_tool_call import Function
 
 
 class MultiModalitySchema(BaseModel):
@@ -102,31 +103,6 @@ class ParsedToolFunction(BaseModel):
     name: str
     arguments: dict
 
-class ToolFunction(BaseModel):
-    """ Tool function which is outputed by tool llm
-    
-    Args:
-        name(str): to be called function name
-        arguments(str): arguments to be passed in `name` function in a string format.
-    """
-
-    name: str
-    arguments: str
-
-    def parse(self) -> Optional[ParsedToolFunction]:
-        """ parse ToolFunction to ParsedToolFunction 
-        
-        Returns:
-            Optional[ParsedToolFunction]: parsed tool function. If None means parsed failed.
-        """
-
-        try:
-            parsed_args:dict = json.loads(self.arguments)
-            return ParsedToolFunction(name=self.name, arguments=parsed_args)
-        except json.JSONDecodeError as jde:
-            print(f"Failed to decode arguments {self.arguments}. Please make the arguments is a valid json string.")
-            return None
-
 class ToolCall(BaseModel):
     """ Tool call information
     
@@ -139,7 +115,7 @@ class ToolCall(BaseModel):
     
     id: str
     type: str
-    function: ToolFunction
+    function: Function
     index: int
 
 class Message(BaseModel):
@@ -177,3 +153,20 @@ class Message(BaseModel):
         if self.tool_call_id is not None:
             msg_dict['tool_call_id'] = self.tool_call_id
         return msg_dict
+    
+def convert_args_to_json(func_name:str, args:str) -> Optional[ParsedToolFunction]:
+    """ parse ToolFunction to ParsedToolFunction
+    
+    Args:
+        func_name(str): calling function name
+        args(str): a args string in openai Function type. Probably it's not a standard json.
+
+    Returns:
+        Optional[ParsedToolFunction]: parsed tool function. If None means parsed failed.
+    """
+    try:
+        parsed_args:dict = json.loads(args)
+        return ParsedToolFunction(name=func_name, arguments=parsed_args)
+    except json.JSONDecodeError as jde:
+        print(f"Failed to decode arguments {args} of function {func_name}. Please make the arguments is a valid json string.")
+        return None
