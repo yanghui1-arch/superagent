@@ -63,6 +63,7 @@ class LLM(BaseModel):
             return self._generate_sync(prompts=prompts, tools=tools, params=params)
         return await self._generate_async(prompts=prompts, params=params)
 
+    @track
     def _generate_sync(
         self,
         prompts:list[Message],
@@ -78,14 +79,16 @@ class LLM(BaseModel):
         
         Returns:
             str: llm response
+            list[ParsedToolFunction]: a list of parsed tool function
         """
-
+        print(tools)
         _prompts = [prompt.model_dump(exclude_none=True) for prompt in prompts]
         _params = params.model_dump(exclude_none=True)
         completion:ChatCompletion = self.client.chat.completions.create(
             messages=_prompts,
             model=self.model,
             tools=tools,
+            parallel_tool_calls=True,
             **_params
         )
         _is_using_tool = completion.choices[0].message.tool_calls != None
@@ -107,6 +110,7 @@ class LLM(BaseModel):
             return completion.choices[0].message.content
 
 
+    @track
     async def _generate_async(self, prompts:list[Message], params:LLMGenParams) -> ChatCompletion:
         _prompts = [prompt.model_dump(exclude_none=True) for prompt in prompts]
         _params = params.model_dump(exclude_none=True)
