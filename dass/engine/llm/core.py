@@ -60,11 +60,11 @@ class LLM(BaseModel):
         if tools:
             tools = [tool.to_openai_format_dict() for tool in tools]
         if not asynchronous:
-            return self._generate_sync(prompts=prompts, tools=tools, params=params)
-        return await self._generate_async(prompts=prompts, params=params)
+            return self.generate_sync(prompts=prompts, tools=tools, params=params)
+        return await self.generate_async(prompts=prompts, params=params)
 
     @track
-    def _generate_sync(
+    def generate_sync(
         self,
         prompts:list[Message],
         params:LLMGenParams,
@@ -111,7 +111,7 @@ class LLM(BaseModel):
 
 
     @track
-    async def _generate_async(self, prompts:list[Message], params:LLMGenParams) -> ChatCompletion:
+    async def generate_async(self, prompts:list[Message], params:LLMGenParams) -> ChatCompletion:
         _prompts = [prompt.model_dump(exclude_none=True) for prompt in prompts]
         _params = params.model_dump(exclude_none=True)
         return await self.async_client.chat.completions.create(messages=_prompts,
