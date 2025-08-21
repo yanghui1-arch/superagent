@@ -14,9 +14,8 @@ class ContextEngine(BaseModel, ABC):
     """ ContextEngine manages conversations with llm. """
     start_time: datetime
 
-    @abstractmethod
-    def store(self):
-        raise NotImplementedError("Please implement store function of ContextEngine")
+    class Config:
+        extra = "allow"
 
     @abstractmethod
     def compress(self):
@@ -25,10 +24,6 @@ class ContextEngine(BaseModel, ABC):
     @abstractmethod
     def extract(self):
         raise NotImplementedError("Please implement extract function of ContextEngine")
-
-    @abstractmethod
-    def subtract(self):
-        raise NotImplementedError("Please implement subtract function of ContextEngine")
 
     @abstractmethod
     def append(self, args, **kwargs):
@@ -60,16 +55,10 @@ class MessageContextEngine(ContextEngine):
             self.context[conversation_uuid] = []
         self.context[conversation_uuid].append(message)
 
-    def store(self):
-        ...
-
-    def compress(self):
-        ...
-
     def extract(self):
         ...
 
-    def subtract(self):
+    def compress(self):
         ...
 
     @property
@@ -89,6 +78,3 @@ class MessageContextEngine(ContextEngine):
         if conversation_uuid not in self.context.keys():
             return []
         return self.context[conversation_uuid]
-
-class MemoryContextEngine(ContextEngine):
-    ...
