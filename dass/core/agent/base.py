@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from ...config.load import LLMConfig, EmbeddingConfig
 from ...engine import LLM, LLMGenParams, Message
 from ...engine import MemoryEngine
+from ...context import MessageContextEngine
 
 
 class Agent(ABC, BaseModel):
@@ -15,22 +16,24 @@ class Agent(ABC, BaseModel):
     Args:
         llm_config(LLMConfig): llm config in config.toml
         embedding_config(EmbeddingConfig): embedding config in config.toml
-        llm(Optional[LLM]): llm. Default to `None`
+        llm(LLM): llm
         llm_gen_params(Optional[LLMGenParams]): llm generation parameters. Default to `None`.
         memory_engine(Optional[MemoryEngine]): memory engine of agent. Default to `None`.
     """
 
     llm_config:LLMConfig
-    embedding_config:EmbeddingConfig
-    llm: Optional[LLM] = None
+    embedding_config:Optional[EmbeddingConfig] = None
     llm_gen_params: Optional[LLMGenParams] = None
-    memory_engine:Optional[MemoryEngine] = None
 
     class Config:
         arbitrary_types_allowed = True
         extra = "allow"
 
     def model_post_init(self, context):
+        if self.llm_gen_params is None:
+            print(f"{self.__class__.__name__} is not given a generation parameter. Set default generation parameters to her.")
+            self.llm_gen_params = LLMGenParams(stream=False, temperature=0.9)
+
         print(f"{self.__class__.__name__} is initializing llm...")
         self.llm = LLM(
             base_url=self.llm_config.base_url,
@@ -39,9 +42,14 @@ class Agent(ABC, BaseModel):
         )
         print(f"{self.__class__.__name__} has been initialized llm!")
         
-        print(f"{self.__class__.__name__} is initializing memory engine...")
-        self.memory_engine = MemoryEngine(config=self.embedding_config)
-        print(f"{self.__class__.__name__} has initialized memory engine!")
+        if self.embedding_config:
+            print(f"{self.__class__.__name__} is initializing memory engine...")
+            self.memory_engine = MemoryEngine(config=self.embedding_config)
+            print(f"{self.__class__.__name__} has initialized memory engine!")
+        else:
+            print(f"{self.__class__.__name__} doesn't need a memory system.")
+        
+        self.context_manager = MessageContextEngine(llm_config=self.llm_config)
 
     async def __call__(self, *args, **kwargs) -> Any:
         return await self.execute(*args, **kwargs)
