@@ -50,12 +50,12 @@ class MessageContextEngine(ContextEngine):
 
     Args:
         context(Dict[UUID, List[Message]]): record all messages for every conversation.
+        llm_config(LLMConfig): llm config
+        llm_gen_param(Optional[LLMGenParams]): llm generation parameters. Default to None.
     """
 
     llm_config: LLMConfig
     llm_gen_param: Optional[LLMGenParams] = None
-    llm: Optional[LLM] = None
-    
 
     def model_post_init(self, context):
         if self.llm_config:
