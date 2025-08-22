@@ -16,7 +16,7 @@ Context = Message
 
 class ContextEngine(BaseModel, ABC):
     """ ContextEngine manages conversations with llm. """
-    start_time: datetime
+    context:dict[UUID, list[Message]] = {}
 
     class Config:
         extra = "allow"
@@ -53,7 +53,6 @@ class MessageContextEngine(ContextEngine):
     """
 
     llm_config: LLMConfig
-    context:dict[UUID, list[Message]] = {}
     llm_gen_param: Optional[LLMGenParams] = None
     llm: Optional[LLM] = None
     
