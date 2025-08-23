@@ -36,16 +36,60 @@ Outer available tools for you to get more information that you not have inner mo
 
 
 ##################################################
-#               think prompt                     # 
+#               plan and think prompt            # 
 ##################################################
 
+PLAN_TAG = "<PLAN>"
+EASY_TAG = "<EASY>"
+EASY_END_TAG = "</EASY>"
 TODO_LIST_TAG = "<TODO_LIST>"
 NO_COMPLETED_TAG = "- []"
 COMPLETED_TAG = "- [x]"
 OBSCURE_QUESTION_TAG = "<OBSCURE>"
 SOLVED_TAG = "<SOLVED>"
 
+
+""" super agent plan prompt
+Super agent will generate a plan which includes subplans. These subplans will be passed to the next stage and superagent will make detailed todo list for every subplan.
+If super agent think the user question is very easy she will not make any plans and output the result directly. As now the response cannot be outputed directly because 
+the response is not like a human speaking. It will be passed to the next stage to polish and then represent on GUI.
+
+Args:
+    user_question: user question
+    PLAN_TAG: plan content start tag. Caller can tell whether llm makes plans by finding whether the response includes PLAN_TAG
+    EASY_TAG: easy problem tag.
+    EASY_END_TAG: easy problem end tag
+    NO_COMPLETED_TAG: no completed tag in markdown
+"""
+
+plan_prompt = """You are a master of making plans to solve complex and difficult problems.
+Now please try to make plans to solve the <user_question>.
+You are supposed to use less but clear words to describe the subplans in markdown.
+The output format should be started with `{PLAN_TAG}`: .
+    For example:
+    ```
+    {PLAN_TAG}:
+    {NO_COMPLETED_TAG}...
+    {NO_COMPLETED_TAG}...
+    {NO_COMPLETED_TAG}...
+    ```
+However when user post an easy question that you think, you will not make subplans to solve it.
+At the time output should be started with `{EASY_TAG}` and ended with `{EASY_END_TAG}` and the middle of these two tags is your answer or solution for <user_question>.
+Notice that the middle content should be started with `{SOLVED_TAG}.`.
+    For example:
+    ```
+    {EASY_TAG}{SOLVED_TAG}The answer you think is at here.{EASY_END_TAG}
+    ```
+If the user question is about calculation and the refered number is very big or the process steps are complex. You should make plans for it. It's not easy for you.
+
+<user_question>
+{user_question}
+</user_question>
+"""
+
+
 """ agent think prompt
+Super agent will think the subplan and make a todo list for it. It's very important for the whole think process. If the todo list is not enough good, the result will be worse.
 
 Args:
     TODO_LIST_TAG: todo list tag if agent output todo list.
