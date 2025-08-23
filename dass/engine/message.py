@@ -141,19 +141,6 @@ class Message(BaseModel):
     def tool_message(cls, content: str, tool_call_id:Optional[str]):
         return cls(role="tool", content=content, tool_call_id=tool_call_id)
     
-    def to_dict(self):
-        msg_dict = {
-            "role": self.role,
-            "content": self.content
-        }
-        if self.partial is not None:
-            msg_dict['partial'] = self.partial
-        if self.tool_calls is not None:
-            msg_dict['tool_calls'] = self.tool_calls
-        if self.tool_call_id is not None:
-            msg_dict['tool_call_id'] = self.tool_call_id
-        return msg_dict
-    
 def convert_args_to_json(func_name:str, args:str) -> Optional[ParsedToolFunction]:
     """ parse ToolFunction to ParsedToolFunction
     
