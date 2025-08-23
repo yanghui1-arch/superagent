@@ -45,6 +45,7 @@ class TODOList(BaseModel):
         completed_cnt(int): TODOItem counts that have been completed. Default to 0.
         no_completed_cnt(int): TODOItem counts that have not completed. Default to 0.
     """
+
     plan_list: list[TODOItem]
     completed_cnt: int = 0
     no_completed_cnt: int = 0
@@ -85,16 +86,49 @@ class TODOList(BaseModel):
     def no_completed_cnt(self):
         return self.no_completed_cnt
 
+class Plan(BaseModel):
+    """ Plan is a complete solution for a user question in a whole.
+    user_question -> a planlist -> decompose lots of todo lists -> solve items one by one -> back to todo lists -> summarize the observations -> judge whether solve the user question
+    Super agent will decompose a big plan to some smaller sub-plans and then make a todo list for these plans.
+
+
+    Args:
+        overall_goal(str): final target. all following arguments are generated based on target
+        steps(dict[str, TODOList]): smaller steps to achive overall goal. Key is the subplans description. Value is a TODOList
+        completed(bool): whether plan is completed. Default to False.
+    """
+
+    overall_goal: str
+    steps: dict[str, TODOList]
+    completed: bool = False
+
+    @property
+    def subplans(self) -> list:
+        return [sub_plan for sub_plan, _ in self.steps.items()]
+    
+    @property
+    def todolist(self, sub_plan:str) -> TODOList:
+        if sub_plan not in self.steps.keys():
+            raise KeyError("please check your passing sub_plan name is in the plan.")
+        return self.steps[sub_plan]
+    
+    @property
+    def steps(self) -> dict[str, TODOList]:
+        return self.steps
+
+    @property
+    def completed(self):
+        return self.completed
+
 class Action(BaseModel):
     """ Action by agent
     
     Args:
         id(UUID): action id
-        from_think:id(UUID): uuid which think result applies the action
-        tool(Optional[Tool])
+        tool(Tool): calling tool
+        tool_params(Optional[dict]): tool input parameters. Default to None.
     """
     id: UUID = uuid4()
-    from_think_id: UUID
     tool: Tool
     tool_params: Optional[dict] = None
 
