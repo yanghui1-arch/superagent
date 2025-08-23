@@ -1,3 +1,13 @@
+__all__ = [
+    "TODO_LIST_TAG",
+    "NO_COMPLETED_TAG",
+    "COMPLETED_TAG",
+    "OBSCURE_QUESTION_TAG",
+    "SOLVED_TAG",
+    "think_prompt",
+    "sys_prompt"
+]
+
 ##################################################
 #               system prompt template           #
 ##################################################
@@ -102,11 +112,32 @@ Notice:
 <observations>
 {observations}
 </observations>
-
 """
 
-__all__ = [
-    "OBSCURE_QUESTION_TAG",
-    "SOLVED_TAG",
-    "think_prompt"
-]
+##################################################
+#               decompose prompt                 # 
+##################################################
+
+""" prompt of decomposing a big complex task into small easily solving problems
+The output format is the same as the think prompt todo list.
+
+Args:
+    TODO_LIST_TAG: start tag for parsing decomposing results
+    NO_COMPLETED_TAG: a standard markdown grammer tag, - [] 
+    big_task: task to be decomposed.
+"""
+
+decompose_task_prompt = """You are a master of decomposing a big complex task into some small easy handy tasks.
+Please decompost <big_task> into small easily solving problems.
+The output format should be started with `{TODO_LIST_TAG}`: .
+    For example:
+    ```
+    {TODO_LIST_TAG}:
+    {NO_COMPLETED_TAG}...
+    {NO_COMPLETED_TAG}...
+    {NO_COMPLETED_TAG}...
+    ```
+<big_task>
+{big_task}
+</bit_task>
+"""
