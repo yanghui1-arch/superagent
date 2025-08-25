@@ -49,7 +49,10 @@ ORDER_START_TAG = "<ORDER>"
 ORDER_END_TAG = "</ORDER>"
 OBSCURE_QUESTION_TAG = "<OBSCURE>"
 SOLVED_TAG = "<SOLVED>"
-
+ANALYZE_START_TAG = "<analyze>"
+ANALYZE_END_TAG = "</analyze>"
+DECOMPOSE_START_TAG = "<decompose_big_task>"
+DECOMPOSE_END_TAG = "</decompose_big_task>"
 
 """ super agent plan prompt
 Super agent will generate a plan which includes subplans. These subplans will be passed to the next stage and superagent will make detailed todo list for every subplan.
@@ -125,21 +128,44 @@ think_prompt = """Based on `<subplan>`, `<todo_list>` and `<observations>` selec
         Based on aboving saying the first and the third item order is 1. The second and the fourth order is 2. Finally the fifth todo item order is 3.
 
 2. select first not completed todo item in `<todo_list>` and try to analyze it and solve it with available tools.
-    2.1 You can use many tools to analyze and solve the problem.
+    2.1 Your selection of no-completed todo item is so easy that you can solve the problem directly by yourself.
     2.2 You can decompose a big task into a series of small tasks.
     `{NO_COMPLETED_TAG}` means the todo item is not completed and `{COMPLETED_TAG}` means the todo item is completed
+    The output format should be started with {ANALYZE_START_TAG} and end with {ANALYZE_END_TAG}.
+    The element between {ANALYZE_START_TAG} and {ANALYZE_END_TAG} has two type based on which one of 2.1 and 2.2 you select.
+    If you select 2.1, the element should be started with {SOLVED_TAG}.
+    Else if you select 2.2, the element should be started with {DECOMPOSE_START_TAG} and end with {DECOMPOSE_END_TAG}. The decomposation is a todo list and output format should be following example of selecting 2.2.
+    For example:
+    If you select this action and then you think your selection of todo item can be easily solve by available tools.
+    ```
+    {ANALYZE_START_TAG}
+    {SOLVED_TAG}...
+    {ANALYZE_END_TAG}
+    ```
+    Else if you think the todo item is so complex that you have to decompose it into more small todo items.
+    ```
+    {ANALYZE_START_TAG}
+    {DECOMPOSE_START_TAG}
+    {TODO_LIST_TAG}:
+    {NO_COMPLETED_TAG}... {ORDER_START_TAG}1{ORDER_END_TAG}
+    {NO_COMPLETED_TAG}... {ORDER_START_TAG}2{ORDER_END_TAG}
+    {NO_COMPLETED_TAG}... {ORDER_START_TAG}3{ORDER_END_TAG}
+    {DECOMPOSE_END_TAG}
+    {ANALYZE_END_TAG}
+    ```
+
 3. fix it if the latest observation raise error. The probable reason: 
     3.1 You select a wrong tool
     3.2 You don't give the right arguments.
     3.3 The tool is wrong during developer implementing it.
 4. output the reuslt if you think you can solve it directly or you can solve it easily with `<observations>`
-   or `<user_question>` is an easy question.
+   or `<subplan>` is an easy question.
    The output format should be started with `{SOLVED_TAG}`:. 
    For example:
     ```
     {SOLVED_TAG}: I have successfully solve the problem. Now the following content is answer. ...
     ```
-5. request user for more information to solve the problem. Sometimes `<user_question>` is obscure because not everyone
+5. request user for more information to solve the problem. Sometimes `<subplan>` is obscure because not everyone
    are capable of clearly describing their needs or questions. You should be patient to request more information about it.
    The request format should be started with `{OBSCURE_QUESTION_TAG}`: .
    For example: 
@@ -148,7 +174,7 @@ think_prompt = """Based on `<subplan>`, `<todo_list>` and `<observations>` selec
    ```
 
 Notice:
-    1. Due to you are a general task solving artificial intelligence and be human-like friend, your facing `<user_question>`
+    1. Due to you are a general task solving artificial intelligence and be human-like friend, your facing `<subplan>`
     is not always serious tech/study/work problem and other similiar topics. If `<subplan>` is a relax topic or just
     for chat. You can be more humour and more considerate. 
     2. The output of todo_list should be a list which satisfied a markdown format. 
@@ -165,32 +191,6 @@ Notice:
 <observations>
 {observations}
 </observations>
-"""
-
-##################################################
-#               decompose prompt                 # 
-##################################################
-
-""" prompt of decomposing a big complex task into small easily solving problems
-The output format is the same as the think prompt todo list.
-
-Args:
-    TODO_LIST_TAG: start tag for parsing decomposing results
-    NO_COMPLETED_TAG: a standard markdown grammer tag, - [] 
-    big_task: task to be decomposed.
-"""
-
-decompose_task_prompt = """You are a master of decomposing a big complex task into some small easy handy tasks.
-Please decompost <big_task> into small easily solving problems.
-The output format should be started with `{TODO_LIST_TAG}`: .
-    For example:
-    ```
-    {TODO_LIST_TAG}:
-    {NO_COMPLETED_TAG}...
-    {NO_COMPLETED_TAG}...
-    {NO_COMPLETED_TAG}...
-    ```
-<big_task>
-{big_task}
-</bit_task>
-"""
+""".format(TODO_LIST_TAG=TODO_LIST_TAG, NO_COMPLETED_TAG=NO_COMPLETED_TAG, ORDER_START_TAG=ORDER_START_TAG,
+           ORDER_END_TAG=ORDER_END_TAG, COMPLETED_TAG=COMPLETED_TAG, SOLVED_TAG=SOLVED_TAG,
+           OBSCURE_QUESTION_TAG=OBSCURE_QUESTION_TAG)
