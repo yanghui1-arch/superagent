@@ -12,6 +12,7 @@ from ...context import MessageContextEngine
 class Agent(ABC, BaseModel):
     """ Base agent class
     Every agent need to extend it. Every agent have to be capable to request llm and retrieve memory.
+    llm generation parameter will be set (temperature=0.9, stream=False) when you don't give llm_gen_params during initializing agent. 
     
     Args:
         llm_config(LLMConfig): llm config in config.toml
