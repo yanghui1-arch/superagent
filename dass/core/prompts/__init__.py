@@ -53,6 +53,8 @@ ANALYZE_START_TAG = "<analyze>"
 ANALYZE_END_TAG = "</analyze>"
 DECOMPOSE_START_TAG = "<decompose_big_task>"
 DECOMPOSE_END_TAG = "</decompose_big_task>"
+MAKE_TODO_LIST_START_TAG = "<make_todo_list>"
+MAKE_TODO_LIST_END_TAG = "</make_todo_list>"
 
 """ super agent plan prompt
 Super agent will generate a plan which includes subplans. These subplans will be passed to the next stage and superagent will make detailed todo list for every subplan.
@@ -97,6 +99,8 @@ If the user question is about calculation and the refered number is very big or 
 Super agent will think the subplan and make a todo list for it. It's very important for the whole think process. If the todo list is not enough good, the result will be worse.
 
 Args:
+    MAKE_TODO_LIST_START_TAG: make todo list start tag.
+    MAKE_TODO_LIST_END_TAG: make todo list end tag.
     TODO_LIST_TAG: todo list tag if agent output todo list.
     NO_COMPLETED_TAG: todo item is not completed tag.
     COMPLETED_TAG: todo item is completed tag.
@@ -121,10 +125,12 @@ think_prompt = """Based on `<subplan>`, `<todo_list>` and `<observations>` selec
     The output format should be started with `{TODO_LIST_TAG}`: .
     For example:
     ```
+    {MAKE_TODO_LIST_START_TAG}
     {TODO_LIST_TAG}:
     {NO_COMPLETED_TAG}... {ORDER_START_TAG}1{ORDER_END_TAG}
     {NO_COMPLETED_TAG}... {ORDER_START_TAG}2{ORDER_END_TAG}
     {NO_COMPLETED_TAG}... {ORDER_START_TAG}3{ORDER_END_TAG}
+    {MAKE_TODO_LIST_END_TAG}
     ```
     The number included in {ORDER_START_TAG}{ORDER_END_TAG} is the todo items executing order. If one todo item can be executed paralleling with another todo item their order should be the same.
     For example:
