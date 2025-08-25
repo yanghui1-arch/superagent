@@ -94,12 +94,15 @@ class Plan(BaseModel):
 
     Args:
         overall_goal(str): final target. all following arguments are generated based on target
-        steps(dict[str, TODOList]): smaller steps to achive overall goal. Key is the subplans description. Value is a TODOList
+        steps(dict[str, bool]): smaller steps to achive overall goal. Key is the subplans description. Value is whether completed
         completed(bool): whether plan is completed. Default to False.
     """
 
+    COMPLETED_TAG:ClassVar[str] = COMPLETED_TAG
+    NO_COMPLETED_TAG:ClassVar[str] = NO_COMPLETED_TAG
+
     overall_goal: str
-    steps: dict[str, TODOList]
+    steps: dict[str, bool]
     completed: bool = False
 
     @property
@@ -107,14 +110,15 @@ class Plan(BaseModel):
         return [sub_plan for sub_plan, _ in self.steps.items()]
     
     @property
-    def todolist(self, sub_plan:str) -> TODOList:
-        if sub_plan not in self.steps.keys():
-            raise KeyError("please check your passing sub_plan name is in the plan.")
-        return self.steps[sub_plan]
+    def steps(self) -> dict[str, bool]:
+        return self.steps
     
     @property
-    def steps(self) -> dict[str, TODOList]:
-        return self.steps
+    def steps_detailed(self) -> str:
+        detailed_info = ""
+        for subplan, complete in self.steps.items():
+            detailed_info += f"{Plan.COMPLETED_TAG if complete else Plan.NO_COMPLETED_TAG} {subplan} \n"
+        return detailed_info
 
     @property
     def completed(self):
