@@ -55,6 +55,8 @@ DECOMPOSE_START_TAG = "<decompose_big_task>"
 DECOMPOSE_END_TAG = "</decompose_big_task>"
 MAKE_TODO_LIST_START_TAG = "<make_todo_list>"
 MAKE_TODO_LIST_END_TAG = "</make_todo_list>"
+TODO_ITEM_START_TAG = "<selected_todo_item>"
+TODO_ITEM_END_TAG = "</selected_todo_item>"
 
 """ super agent plan prompt
 Super agent will generate a plan which includes subplans. These subplans will be passed to the next stage and superagent will make detailed todo list for every subplan.
@@ -110,6 +112,8 @@ Args:
     ANALYZE_END_TAG: analyze end tag.
     DECOMPOSE_START_TAG: decompose a todo item into more todo items start tag.
     DECOMPOSE_END_TAG: decompose end tag.
+    TODO_ITEM_START_TAG: selection of todo item start tag.
+    TODO_ITEM_END_TAG: selection of todo item end tag.
     SOLVED_TAG: solved tag to parse the result and judge wheter the problem is solved
     OBSCURE_QUESTION_TAG: tag which mark the user question is not clear and parse it to tell user he/she need to offer more information
     subplan: subplan
@@ -149,12 +153,14 @@ think_prompt = """Based on `<subplan>`, `<todo_list>` and `<observations>` selec
     If you select this action and then you think your selection of todo item can be easily solve by available tools.
     ```
     {ANALYZE_START_TAG}
+    {TODO_ITEM_START_TAG} ... {TODO_ITEM_END_TAG}
     {SOLVED_TAG}...
     {ANALYZE_END_TAG}
     ```
     Else if you think the todo item is so complex that you have to decompose it into more small todo items.
     ```
     {ANALYZE_START_TAG}
+    {TODO_ITEM_START_TAG} ... {TODO_ITEM_END_TAG}
     {DECOMPOSE_START_TAG}
     {TODO_LIST_TAG}:
     {NO_COMPLETED_TAG}... {ORDER_START_TAG}1{ORDER_END_TAG}
@@ -204,4 +210,5 @@ Notice:
 """.format(TODO_LIST_TAG=TODO_LIST_TAG, NO_COMPLETED_TAG=NO_COMPLETED_TAG, ORDER_START_TAG=ORDER_START_TAG,
            ORDER_END_TAG=ORDER_END_TAG, COMPLETED_TAG=COMPLETED_TAG, SOLVED_TAG=SOLVED_TAG,
            OBSCURE_QUESTION_TAG=OBSCURE_QUESTION_TAG, ANALYZE_START_TAG=ANALYZE_START_TAG, ANALYZE_END_TAG=ANALYZE_END_TAG,
-           DECOMPOSE_START_TAG=DECOMPOSE_START_TAG, DECOMPOSE_END_TAG=DECOMPOSE_END_TAG)
+           DECOMPOSE_START_TAG=DECOMPOSE_START_TAG, DECOMPOSE_END_TAG=DECOMPOSE_END_TAG, TODO_ITEM_START_TAG=TODO_ITEM_START_TAG,
+           TODO_ITEM_END_TAG=TODO_ITEM_END_TAG)
