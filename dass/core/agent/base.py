@@ -53,10 +53,10 @@ class Agent(ABC, BaseModel):
         self.context_manager = MessageContextEngine(llm_config=self.llm_config)
 
     async def __call__(self, *args, **kwargs) -> Any:
-        return await self.execute(*args, **kwargs)
+        return await self.run(*args, **kwargs)
     
     @abstractmethod
-    async def execute(self, *args, **kwargs) -> Any:
+    async def run(self, *args, **kwargs) -> Any:
         """ agent core execution """
 
     @abstractmethod
