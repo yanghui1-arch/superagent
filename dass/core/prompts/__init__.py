@@ -45,6 +45,8 @@ EASY_END_TAG = "</EASY>"
 TODO_LIST_TAG = "<TODO_LIST>"
 NO_COMPLETED_TAG = "- []"
 COMPLETED_TAG = "- [x]"
+ORDER_START_TAG = "<ORDER>"
+ORDER_END_TAG = "</ORDER>"
 OBSCURE_QUESTION_TAG = "<OBSCURE>"
 SOLVED_TAG = "<SOLVED>"
 
@@ -95,26 +97,33 @@ Args:
     TODO_LIST_TAG: todo list tag if agent output todo list.
     NO_COMPLETED_TAG: todo item is not completed tag.
     COMPLETED_TAG: todo item is completed tag.
+    ORDER_START_TAG: todo item order start tag
+    ORDER_END_TAG: todo item order end tag
     SOLVED_TAG: solved tag to parse the result and judge wheter the problem is solved
     OBSCURE_QUESTION_TAG: tag which mark the user question is not clear and parse it to tell user he/she need to offer more information
-    user_question: user question
+    subplan: subplan
     todo_list: current todo list
     observations: current observations. It's all observations not just one probably.
 """
 
-think_prompt = """Based on `<user_question>`, `<todo_list>` and `<observations>` select one choice following.
+think_prompt = """Based on `<subplan>`, `<todo_list>` and `<observations>` select one choice following.
 1. make a todo list in following situations.
     1.1 if `<todo_list>` is empty
-    1.2 the `<user_question>` is complex.
-    1.3 `<user_question>` is about calculation
+    1.2 the `<subplan>` is complex.
+    1.3 `<subplan>` is about calculation and refered numbers are very big.
     The output format should be started with `{TODO_LIST_TAG}`: .
     For example:
     ```
     {TODO_LIST_TAG}:
-    {NO_COMPLETED_TAG}...
-    {NO_COMPLETED_TAG}...
-    {NO_COMPLETED_TAG}...
+    {NO_COMPLETED_TAG}... {ORDER_START_TAG}1{ORDER_END_TAG}
+    {NO_COMPLETED_TAG}... {ORDER_START_TAG}2{ORDER_END_TAG}
+    {NO_COMPLETED_TAG}... {ORDER_START_TAG}3{ORDER_END_TAG}
     ```
+    The number included in {ORDER_START_TAG}{ORDER_END_TAG} is the todo items executing order. If one todo item can be executed paralleling with another todo item their order should be the same.
+    For example:
+        I have five todo items in my todo list. The first and the third can be executed parallely and the second and fourth should be executed following the first and the third. Finally all todo items are all executed the fifth todo item is executed.
+        Based on aboving saying the first and the third item order is 1. The second and the fourth order is 2. Finally the fifth todo item order is 3.
+
 2. select first not completed todo item in `<todo_list>` and try to analyze it and solve it with available tools.
     2.1 You can use many tools to analyze and solve the problem.
     2.2 You can decompose a big task into a series of small tasks.
@@ -140,14 +149,14 @@ think_prompt = """Based on `<user_question>`, `<todo_list>` and `<observations>`
 
 Notice:
     1. Due to you are a general task solving artificial intelligence and be human-like friend, your facing `<user_question>`
-    is not always serious tech/study/work problem and other similiar topics. If `<user_question>` is a relax topic or just
+    is not always serious tech/study/work problem and other similiar topics. If `<subplan>` is a relax topic or just
     for chat. You can be more humour and more considerate. 
     2. The output of todo_list should be a list which satisfied a markdown format. 
 
 
-<user_question>
-{user_question}
-</user_question>
+<subplan>
+{subplan}
+</subplan>
 
 <todo_list>
 {todo_list}
