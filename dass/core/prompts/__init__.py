@@ -100,8 +100,12 @@ Args:
     TODO_LIST_TAG: todo list tag if agent output todo list.
     NO_COMPLETED_TAG: todo item is not completed tag.
     COMPLETED_TAG: todo item is completed tag.
-    ORDER_START_TAG: todo item order start tag
-    ORDER_END_TAG: todo item order end tag
+    ORDER_START_TAG: todo item order start tag.
+    ORDER_END_TAG: todo item order end tag.
+    ANALYZE_START_TAG: analyze start tag.
+    ANALYZE_END_TAG: analyze end tag.
+    DECOMPOSE_START_TAG: decompose a todo item into more todo items start tag.
+    DECOMPOSE_END_TAG: decompose end tag.
     SOLVED_TAG: solved tag to parse the result and judge wheter the problem is solved
     OBSCURE_QUESTION_TAG: tag which mark the user question is not clear and parse it to tell user he/she need to offer more information
     subplan: subplan
@@ -193,4 +197,5 @@ Notice:
 </observations>
 """.format(TODO_LIST_TAG=TODO_LIST_TAG, NO_COMPLETED_TAG=NO_COMPLETED_TAG, ORDER_START_TAG=ORDER_START_TAG,
            ORDER_END_TAG=ORDER_END_TAG, COMPLETED_TAG=COMPLETED_TAG, SOLVED_TAG=SOLVED_TAG,
-           OBSCURE_QUESTION_TAG=OBSCURE_QUESTION_TAG)
+           OBSCURE_QUESTION_TAG=OBSCURE_QUESTION_TAG, ANALYZE_START_TAG=ANALYZE_START_TAG, ANALYZE_END_TAG=ANALYZE_END_TAG,
+           DECOMPOSE_START_TAG=DECOMPOSE_START_TAG, DECOMPOSE_END_TAG=DECOMPOSE_END_TAG)
