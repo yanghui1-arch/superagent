@@ -1,6 +1,6 @@
 from uuid import UUID
 from uuid import uuid4
-from typing import Optional, Literal, ClassVar
+from typing import Optional, Literal, ClassVar, List
 from pydantic import BaseModel
 from ....kits.tool import Tool, ToolResult, ResultFlag
 from ...prompts import NO_COMPLETED_TAG, COMPLETED_TAG
@@ -20,6 +20,9 @@ class TODOItem(BaseModel):
     order: int
     content: str
     status: Literal["completed", "no-completed"] = "no-completed"
+
+    def __repr__(self):
+        return f"{TODOItem.no_completed_tag if self.status=="no-completed" else TODOItem.completed_tag} {self.content}"
 
     def mark_complete(self) -> bool:
         """ to sign the item completed
@@ -54,14 +57,17 @@ class TODOList(BaseModel):
         self.no_completed_cnt = sum(1 for item in self.plan_list if item.status == "no-completed")
         self.completed_cnt = len(self.plan_list) - self.no_completed_cnt
     
-    def complete_plan(self, todo_item_idx:int) -> bool:
+    def __repr__(self):
+        return "TODO List:\n" + "\n".join(self.plan_list)
+
+    def complete_todo_item(self, todo_item_idx:int) -> "TODOList":
         """ update todo item status and completed, no-completed counts
 
         Args:
             todo_item_idx(int): index of todo item. NOT order!! MUST be idx!!
 
         Returns:
-            bool: whether complete succussfully
+            TODOList: self todo list
         """
 
         if todo_item_idx >= len(self.plan_list) or todo_item_idx < 0:
@@ -69,13 +75,17 @@ class TODOList(BaseModel):
         
         todo_item = self.plan_list[todo_item_idx]
         completed = todo_item.complete()
-        if completed:    
+        if completed:
             self.completed_cnt += 1
             self.no_completed_cnt -= 1
 
         if self.no_completed_cnt < 0:
             print(f"[WARNING]: no-completed count is below 0 when complete plan.")
-        return completed
+        return self
+
+    @property
+    def todo_items(self) -> list[TODOItem]:
+        return self.plan_list
 
     @property
     def completed_cnt(self):
@@ -93,6 +103,7 @@ class Plan(BaseModel):
 
     Args:
         overall_goal(str): final target. all following arguments are generated based on target
+        subplans(list[SubPlan]): a list of detailed subplans. Default to `[]`.
         steps(dict[str, bool]): smaller steps to achive overall goal. Key is the subplans description. Value is whether completed
         completed(bool): whether plan is completed. Default to False.
     """
@@ -104,10 +115,17 @@ class Plan(BaseModel):
     steps: dict[str, bool]
     completed: bool = False
 
+    def model_post_init(self, context):
+        self.subplans:list[SubPlan] = []
+
     @property
-    def subplans(self) -> list:
+    def subplans_desc(self) -> list[str]:
         return [sub_plan for sub_plan, _ in self.steps.items()]
     
+    @property
+    def subplans_detailed(self) -> list["SubPlan"]:
+        return self.subplans
+
     @property
     def steps(self) -> dict[str, bool]:
         return self.steps
@@ -135,6 +153,13 @@ class SubPlan(BaseModel):
 
     detailed_info: str
     todo_list: Optional[TODOList] = None
+
+    def __repr__(self):
+        todo_list:list[str] = []
+        if self.todo_list:
+            for idx, todo_item in enumerate(self.todo_list.todo_items()):
+                todo_list.append(f" {idx}. {todo_item}")
+        return f"Subplan: {self.detailed_info}\nTODO List:\n{"\n".join(todo_list)}"
     
 
 class Action(BaseModel):
