@@ -21,7 +21,7 @@ class TODOItem(BaseModel):
     content: str
     status: Literal["completed", "no-completed"] = "no-completed"
 
-    def complete(self) -> bool:
+    def mark_complete(self) -> bool:
         """ to sign the item completed
         Replace `- []` to `- [x]`
 
@@ -34,7 +34,6 @@ class TODOItem(BaseModel):
         self.status = "completed"
         self.content = self.content.replace(TODOItem.no_completed_tag, TODOItem.completed_tag, 1)
         return True
-
 
 class TODOList(BaseModel):
     """ todo list
