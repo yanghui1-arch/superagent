@@ -65,7 +65,7 @@ class TODOList(BaseModel):
             raise ValueError(f"todo_item_idx cannot be {todo_item_idx}. Please ensure its range is in [0, {len(self.plan_list)})")
         
         todo_item = self.plan_list[todo_item_idx]
-        completed = todo_item.complete()
+        completed = todo_item.mark_complete()
         if completed:
             self.completed_cnt += 1
             self.no_completed_cnt -= 1
