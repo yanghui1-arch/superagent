@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional
 from .plan import Plan, SubPlan, TODOList, TODOItem
+from .action import Action
+from .....kits.tool import ToolResult, ResultFlag
 
 class Observable(ABC):
     @property
@@ -19,10 +22,25 @@ class Observation(Observable):
 
     def __init__(self, plan:Plan):
         self.plan_status = PlanStatus(plan=plan)
+        self.history_action_status = HistoryActionStatus()
     
     @property
     def obs(self):
-        return self.plan_status.obs
+        return f"""Plan Observation: {self.plan_status.obs}
+        Action Observation: {self.history_action_status.obs}
+        """
+    
+    @property
+    def plan_obs(self):
+        return f"""Plan observation:
+        {self.plan_status.obs}
+        """
+
+    @property
+    def action_obs(self):
+        return f"""Following observations are result from which action you take before.
+        {self.history_action_status.obs}
+        """
 
 class PlanStatus(Observable):
     """ plan status
@@ -172,3 +190,46 @@ class TODOItemStatus(Observable):
     def obs(self) -> str:
         solution = "Solution: {self.solution}" if self.solution else TODOItemStatus.NOT_SOLVED
         return repr(self.todo_item) + "\n" + f"  {solution}"
+    
+class HistoryActionStatus(Observable):
+    """Record all history actions execution information
+    
+    Args:
+        _action_status_list(list[ActionStatus]): a list of action status. Default to `[]`.
+    """
+
+    def __init__(self):
+        self._action_status_list:list[ActionStatus] = []
+
+    def append(self, action_status:"ActionStatus"):
+        self._action_status_list.append(action_status)
+
+    @property
+    def obs(self):
+        return "\n".join([f"- {action_status}" for action_status in self._action_status_list])
+
+class ActionStatus(Observable):
+
+    def __init__(self, target_task:str, action:Action, execution_result:ToolResult):
+        super().__init__()
+        self.target_task = target_task
+        self.action = action
+        self.execution_result:ToolResult = execution_result
+        self.execution_time = datetime.now()
+
+    @property
+    def obs(self):
+        result_detailed_information = ""
+        if self.execution_result.code == ResultFlag.SUCCESS:
+            result_detailed_information = f"Action is executed successfully. The result of action is {self.execution_result.msg}"
+        elif self.execution_result.code == ResultFlag.NOT_ENOUGH_PARAMS:
+            result_detailed_information = f"Failed to execute. Reason: not enough parameters. Detailed information: {self.execution_result.msg}"
+        elif self.execution_result == ResultFlag.PARSE_FAILED:
+            result_detailed_information = f"Failed to execute. Reason: output cannot be parsed as json format data to pass. Detailed information: {self.execution_result.msg}"
+        else:
+            result_detailed_information = f"Failed to execute. Detailed information: {self.execution_result.msg}"
+
+        return f"""Action name: {self.action.name}.
+        Action parameters: {self.action.tool_params} 
+        Result: {result_detailed_information}
+        """
