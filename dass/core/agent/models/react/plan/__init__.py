@@ -33,10 +33,6 @@ class Plan(BaseModel):
     @property
     def subplans_detailed(self) -> list["SubPlan"]:
         return self.subplans
-
-    @property
-    def steps(self) -> dict[str, bool]:
-        return self.steps
     
     @property
     def steps_detailed(self) -> str:
@@ -44,10 +40,6 @@ class Plan(BaseModel):
         for subplan, complete in self.steps.items():
             detailed_info += f"{Plan.COMPLETED_TAG if complete else Plan.NO_COMPLETED_TAG} {subplan} \n"
         return detailed_info
-
-    @property
-    def completed(self):
-        return self.completed
 
 class SubPlan(BaseModel):
     """ sub plan class
