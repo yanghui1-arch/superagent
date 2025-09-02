@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Optional
-from pydantic import BaseModel
-
 from .plan import Plan, SubPlan, TODOList, TODOItem
 
-class Observation(BaseModel):
+class Observable(ABC):
+    @property
+    @abstractmethod
+    def obs(self):
+        ...
+
+class Observation(Observable):
     """Observation includes all details about plan.
     Super agent observations boil down to a few options.
     First subplan status, focusing on whether subplan has been solved and how to do it.
@@ -13,13 +17,12 @@ class Observation(BaseModel):
     Subplan status is not only todo list status but directly solve the subplan. Due to optional todo list, not every subplan has a todo list. The easy subplan will be solved directly by super agent with tools or just self capabilities.
     """
 
-    plan_status: "PlanStatus"
-
-class Observable(ABC):
+    def __init__(self, plan:Plan):
+        self.plan_status = PlanStatus(plan=plan)
+    
     @property
-    @abstractmethod
     def obs(self):
-        ...
+        return self.plan_status.obs
 
 class PlanStatus(Observable):
     """ plan status
