@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from pydantic import BaseModel
-from . import SubPlan, TODOList
-from . import Action
+from .react.plan import SubPlan, TODOList
+from . import Action 
 
 class ThinkResult(BaseModel):
     """ Super agent think result
@@ -42,3 +42,14 @@ class ParsedThinkResult(BaseModel):
     def model_post_init(self, context):
         if self.selection != "analyze" and self.selected_todo_item:
             raise ValueError("Expected to `ParsedThinkResult` has selected_todo_item only when selection equals to `analyze`.")
+        
+class ExecutionResult(BaseModel):
+    """ Super agent execute one react loop result
+
+    Args:
+        done(bool): whether terminate
+        final_answer(Optional[str]): final answer if done is True. Default to None.
+    """
+
+    done:bool
+    final_answer:Optional[str] = None
