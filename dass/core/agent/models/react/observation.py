@@ -15,7 +15,6 @@ class Observation(BaseModel):
 
     plan_status: "PlanStatus"
 
-
 class Observable(ABC):
     @property
     @abstractmethod
@@ -33,7 +32,7 @@ class PlanStatus(Observable):
 
     def __init__(self, plan:Plan):
         self.plan = plan
-        self.subplan_status_list:list["SubplanStatus"] = []
+        self.subplan_status_list:list["SubplanStatus"] = [SubplanStatus(subplan=subplan) for subplan in self.plan.subplans]
         self.solution:Optional[str] = None
 
     def solved(self) -> bool:
@@ -75,7 +74,6 @@ class SubplanStatus(Observable):
         return f"""Subplan: {self.subplan.detailed_info}\tStatus: {"completed" if self.solved() else "no-completed"}
         {self.todo_list_status.obs}
         """
-
         
 class TODOListStatus(Observable):
     """todo list status
