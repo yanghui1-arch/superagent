@@ -21,10 +21,8 @@ class Plan(BaseModel):
 
     overall_goal: str
     steps: dict[str, bool]
+    subplans:list["SubPlan"] = []
     completed: bool = False
-
-    def model_post_init(self, context):
-        self.subplans:list[SubPlan] = []
 
     @property
     def subplans_desc(self) -> list[str]:
