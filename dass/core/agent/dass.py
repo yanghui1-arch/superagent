@@ -104,6 +104,7 @@ class SuperAgent(Agent):
             str: a total overview of plan completion status.
         """
 
+        print(f"[INFO] super agent is completing plan.")
         subplans = plan.subplans
         subplan_status_list = self.observation.plan_status.subplan_status_list
         for subplan, subplan_status in zip(subplans, subplan_status_list):
@@ -114,6 +115,8 @@ class SuperAgent(Agent):
                 done = execution_res.done
                 solution = execution_res.final_answer
             subplan_status.solution = solution
+        
+        print(f"[INFO] super agent has completed plan.")
         return self.observation.plan_status.obs
 
     async def execute(self, subplan:SubPlan, subplan_status:SubplanStatus) -> ExecutionResult:
@@ -127,8 +130,8 @@ class SuperAgent(Agent):
         print(f"[INFO] Start executing subplan...: {subplan.detailed_info}")
 
         think_result:ThinkResult = await self.think(
-            subplan=subplan.detailed_info,
-            todo_list=subplan.todo_list,
+            subplan_instance=subplan,
+            subplan_status=subplan_status,
             observations=subplan_status.obs
         )
 
@@ -201,15 +204,17 @@ class SuperAgent(Agent):
             plan_tag_start_idx = _plan.find(PLAN_TAG)
             if plan_tag_start_idx == -1:
                 raise ValueError(f"Super agent plan generation is not expected without {PLAN_TAG}.")
-            # plus one due to colon
-            start_idx = plan_tag_start_idx + len(PLAN_TAG) + 1
+            # plus one due to colon and \n
+            start_idx = plan_tag_start_idx + len(PLAN_TAG) + 2
             subplans:List[str] = _plan[start_idx:-len(PLAN_END_TAG)].splitlines()
             steps:Dict[str, bool] = {}
+            subplan_instance_list = []
             for subplan in subplans:
                 steps[subplan] = False
+                subplan_instance_list.append(SubPlan(detailed_info=subplan))
 
             print(f"[INFO] super agent cannot solve the question directly so she makes a plan.")
-            return Plan(overall_goal=user_question, steps=steps)
+            return Plan(overall_goal=user_question, steps=steps, subplans=subplan_instance_list)
 
     async def think(
         self,
@@ -439,5 +444,8 @@ if __name__ == "__main__":
         llm_config = load_llm_config()
         embedding_config = load_embedding_config()
         dass = SuperAgent(llm_config=llm_config, embedding_config=embedding_config, available_tools=[add, sub, div, mul])
-        print("\nresponse:" + await dass.run(user_input="(99937 + 2 * 6555) / 3.2 + 1.4 / 2.0 + 44 * 997665 = ?"))
+        answer = await dass.run(user_input="(99937 + 2 * 6555) / 3.2 + 1.4 / 2.0 + 44 * 997665 = ?")
+        print()
+        print("response:\n")
+        print(answer)
     asyncio.run(main=main())
