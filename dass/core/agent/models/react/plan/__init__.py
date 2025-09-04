@@ -49,10 +49,12 @@ class SubPlan(BaseModel):
     Args:
         detailed_info(str): detailed information about the subplan.
         todo_list(Optional[TODOList]): todo list to achive subplan. Default to None.
+        completed(bool): whether subplan is completed. Default to `False`.
     """
 
     detailed_info: str
     todo_list: Optional[TODOList] = None
+    completed: bool = False
 
     def __repr__(self):
         todo_list:list[str] = []
