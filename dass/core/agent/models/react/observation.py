@@ -89,7 +89,7 @@ class SubplanStatus(Observable):
 
     @property
     def obs(self) -> str:
-        if not hasattr(self, "todo_list_status"):
+        if not self.todo_list_status:
             return self.solution if self.solution else SubplanStatus.NOT_SOLVED
 
         return f"""Subplan: {self.subplan.detailed_info}\tStatus: {"completed" if self.solved() else "no-completed"}
