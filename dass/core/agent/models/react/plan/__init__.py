@@ -1,5 +1,6 @@
 from typing import Optional, ClassVar
 from pydantic import BaseModel
+from pydantic import Field
 from .todo import TODOList, TODOItem
 from .....prompts import NO_COMPLETED_TAG, COMPLETED_TAG
 
@@ -21,7 +22,7 @@ class Plan(BaseModel):
 
     overall_goal: str
     steps: dict[str, bool]
-    subplans:list["SubPlan"] = []
+    subplans:list["SubPlan"] = Field(default_factory=list, init=False)
     completed: bool = False
 
     @property
