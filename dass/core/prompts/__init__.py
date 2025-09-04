@@ -121,11 +121,10 @@ Args:
     observations: current observations. It's all observations not just one probably.
 """
 
-think_prompt = """Based on `<subplan>`, `<todo_list>` and `<observations>` select one choice following.
+think_prompt = f"""Based on `<subplan>`, `<todo_list>` and `<observations>` select one choice following.
 1. make a todo list in following situations.
-    1.1 if `<todo_list>` is empty
-    1.2 the `<subplan>` is complex.
-    1.3 `<subplan>` is about calculation and refered numbers are very big.
+    1.1 the `<subplan>` is complex in logic.
+    1.2 `<subplan>` is about calculation and refered numbers are very big.
     The output format should be started with `{TODO_LIST_TAG}`: .
     For example:
     ```
@@ -194,21 +193,7 @@ Notice:
     is not always serious tech/study/work problem and other similiar topics. If `<subplan>` is a relax topic or just
     for chat. You can be more humour and more considerate. 
     2. The output of todo_list should be a list which satisfied a markdown format. 
+"""
 
-
-<subplan>
-{subplan}
-</subplan>
-
-<todo_list>
-{todo_list}
-<todo_list>
-
-<observations>
-{observations}
-</observations>
-""".format(TODO_LIST_TAG=TODO_LIST_TAG, NO_COMPLETED_TAG=NO_COMPLETED_TAG, ORDER_START_TAG=ORDER_START_TAG,
-           ORDER_END_TAG=ORDER_END_TAG, COMPLETED_TAG=COMPLETED_TAG, SOLVED_TAG=SOLVED_TAG,
-           OBSCURE_QUESTION_TAG=OBSCURE_QUESTION_TAG, ANALYZE_START_TAG=ANALYZE_START_TAG, ANALYZE_END_TAG=ANALYZE_END_TAG,
-           DECOMPOSE_START_TAG=DECOMPOSE_START_TAG, DECOMPOSE_END_TAG=DECOMPOSE_END_TAG, TODO_ITEM_START_TAG=TODO_ITEM_START_TAG,
-           TODO_ITEM_END_TAG=TODO_ITEM_END_TAG)
+def build_think_prompt(subplan, todo_list, observations) -> str:
+    return think_prompt + f"<subplan>\n{subplan}\n</subplan>" + "\n" + f"<todo_list>\n{todo_list}\n</todo_list>" + "\n" + f"<observations>\n{observations}\n</observations>"
