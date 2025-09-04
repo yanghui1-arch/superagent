@@ -1,6 +1,6 @@
 from uuid import UUID
 from .core import MessageContextEngine
-from ..message import Message
+from ..engine import Message
 
 __all__ = ["MessageContextEngine", "init"]
 
