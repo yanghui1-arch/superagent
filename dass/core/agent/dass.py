@@ -106,10 +106,16 @@ class SuperAgent(Agent):
 
         print(f"[INFO] super agent is completing plan.")
         subplans = plan.subplans
-        subplan_status_list = self.observation.plan_status.subplan_status_list
-        for subplan, subplan_status in zip(subplans, subplan_status_list):
+        for subplan in subplans:
             done = False
             solution = None
+            # get subplan status
+            subplan_status = [
+                _subplan_status 
+                for _subplan_status in self.observation.plan_status.subplan_status_list 
+                if _subplan_status.subplan.detailed_info == subplan.detailed_info
+            ][0]
+
             while not done:
                 execution_res:ExecutionResult = await self.execute(subplan=subplan, subplan_status=subplan_status)
                 done = execution_res.done
@@ -129,6 +135,7 @@ class SuperAgent(Agent):
         """
         print(f"[INFO] Start executing subplan...: \n    {subplan.detailed_info}")
 
+        print(f"[DEBUG] observations: {subplan_status.obs}")
         think_result:ThinkResult = await self.think(
             subplan_instance=subplan,
             subplan_status=subplan_status,
@@ -139,7 +146,8 @@ class SuperAgent(Agent):
         for action in think_result.actions:
             res = action.act()
             action_status = ActionStatus(target_task=subplan.detailed_info, action=action, execution_result=res)
-            self.observation.history_action_status.append(action_status=action_status)
+            self.observation.history_action_status.append(subplan_detailed_info=subplan.detailed_info, action_status=action_status)
+            subplan_status.solution = self.observation.history_action_status.get_subplan_actions_obs(subplan_detailed_info=subplan.detailed_info)
 
         # other
         if think_result.selection == "make_todo_list":
@@ -155,6 +163,7 @@ class SuperAgent(Agent):
             else:
                 ...
         
+        print(f"[INFO] subplan: {subplan.detailed_info} DONE: {think_result.done}")
         print(f"[INFO] End execute subplan...: {subplan.detailed_info}")
         return ExecutionResult(done=think_result.done, final_answer=think_result.final_answer)
 
@@ -258,8 +267,9 @@ class SuperAgent(Agent):
         # Actions that super agent calling tools directly
         if isinstance(response, list):
             for tool in response:
-                match_tool:Tool = [_tool.func for _tool in self.available_tools if _tool.name == tool.name][0]
-                _actions.append(Action(tool=match_tool, tool_params=match_tool.arguments))
+                match_tool:Tool = [_tool for _tool in self.available_tools if _tool.name == tool.name][0]
+                args = tool.arguments
+                _actions.append(Action(tool=match_tool, tool_params=args))
         
         # not calling tool
         elif isinstance(response, str):
