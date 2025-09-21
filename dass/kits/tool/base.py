@@ -78,7 +78,7 @@ class Tool(BaseModel):
     func: Callable = Field(exclude=True)
 
     def __call__(self, *args, **kwargs):
-        return self.func(*args, *kwargs)
+        return self.func(*args, **kwargs)
     
     def to_openai_format_dict(self):
         return {
