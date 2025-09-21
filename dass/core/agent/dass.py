@@ -127,7 +127,7 @@ class SuperAgent(Agent):
             subplan(Subplan): subplan of plan
             subplan_status(SubplanStatus): subplan status
         """
-        print(f"[INFO] Start executing subplan...: {subplan.detailed_info}")
+        print(f"[INFO] Start executing subplan...: \n    {subplan.detailed_info}")
 
         think_result:ThinkResult = await self.think(
             subplan_instance=subplan,
@@ -188,12 +188,10 @@ class SuperAgent(Agent):
         if not isinstance(_plan, str):
             raise TypeError(f"Expected `str` type but return `{type(_plan)}` type when super agent make plans.")
         
-        # first find easy and solved tag
-        easy_idx = _plan.find(EASY_TAG)
-        solved_idx = _plan.find(SOLVED_TAG)
         print(_plan)
-        if easy_idx != -1 and solved_idx != -1:
+        if EASY_TAG in _plan and SOLVED_TAG in -1:
             # calculation function is decided by prompt designs.
+            solved_idx = _plan.find(SOLVED_TAG)
             start_idx = solved_idx + len(SOLVED_TAG)
             end_tag_len = len(EASY_END_TAG)
             result = _plan[start_idx: -end_tag_len]
@@ -201,10 +199,10 @@ class SuperAgent(Agent):
             print(f"[INFO] super agent has successfully solve the question.")
             return result
         else:
-            plan_tag_start_idx = _plan.find(PLAN_TAG)
-            if plan_tag_start_idx == -1:
+            if PLAN_TAG not in _plan:
                 raise ValueError(f"Super agent plan generation is not expected without {PLAN_TAG}.")
             # plus one due to colon and \n
+            plan_tag_start_idx = _plan.find(PLAN_TAG)
             start_idx = plan_tag_start_idx + len(PLAN_TAG) + 2
             subplans:List[str] = _plan[start_idx:-len(PLAN_END_TAG)].splitlines()
             steps:Dict[str, bool] = {}
@@ -347,12 +345,12 @@ class SuperAgent(Agent):
         """
         
         # select the first
-        if think_response.find(MAKE_TODO_LIST_START_TAG) and think_response.find(TODO_LIST_TAG):
+        if MAKE_TODO_LIST_START_TAG in think_response and TODO_LIST_TAG in think_response:
             todo_list = self._parse_todo_list(think_response)
             return ParsedThinkResult(selection="make_todo_list", info=todo_list)
 
         # select the second
-        elif think_response.find(ANALYZE_START_TAG):
+        elif ANALYZE_START_TAG in think_response:
             # select one not completed todo item
             selected_todo_item:Optional[str] = None
             if think_response.find(TODO_ITEM_START_TAG):
@@ -361,23 +359,23 @@ class SuperAgent(Agent):
                 selected_todo_item = think_response[todo_item_start_idx: todo_item_end_idx]
 
             # 2.1
-            if think_response.find(SOLVED_TAG):
+            if SOLVED_TAG in think_response:
                 solution_start_idx = think_response.find(SOLVED_TAG) + len(SOLVED_TAG)
                 solution = think_response[solution_start_idx:-len(ANALYZE_END_TAG)]
                 return ParsedThinkResult(selection="analyze", done=False, info=solution, selected_todo_item=selected_todo_item)
             # 2.2
-            if think_response.find(DECOMPOSE_START_TAG) and think_response.find(DECOMPOSE_START_TAG) and think_response.find(TODO_LIST_TAG):
+            if DECOMPOSE_START_TAG in think_response and DECOMPOSE_START_TAG in think_response and TODO_LIST_TAG in think_response:
                 todo_list = self._parse_todo_list(think_response)
                 return ParsedThinkResult(selection="analyze", done=False, info=todo_list, selected_todo_item=selected_todo_item)                
 
         # select fourth
-        elif think_response.find(SOLVED_TAG):
+        elif SOLVED_TAG in think_response:
             start_idx = think_response.find(SOLVED_TAG) + len(SOLVED_TAG)
             final_answer = think_response[start_idx:]
             return ParsedThinkResult(selection="solved", done=True, info=final_answer) 
         
         # select fifth
-        elif think_response.find(OBSCURE_QUESTION_TAG):
+        elif OBSCURE_QUESTION_TAG in think_response:
             start_idx = think_response.find(OBSCURE_QUESTION_TAG) + len(OBSCURE_QUESTION_TAG)
             return ParsedThinkResult(selection="obscure", done=True, info=think_response[start_idx:])
 
@@ -406,10 +404,9 @@ class SuperAgent(Agent):
             order = idx
             content = item
 
-            order_start_idx = item.find(ORDER_START_TAG)
-            order_end_idx = item.find(ORDER_END_TAG)
-
-            if order_start_idx and order_end_idx:
+            if ORDER_START_TAG in item and ORDER_END_TAG in item:
+                order_start_idx = item.find(ORDER_START_TAG)
+                order_end_idx = item.find(ORDER_END_TAG)
                 # to get executing order
                 order_str:str = item[order_start_idx + len(ORDER_END_TAG): order_end_idx]
                 order = int(order_str.strip())
