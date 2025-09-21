@@ -26,8 +26,11 @@ class Observation(Observable):
     
     @property
     def obs(self):
-        return f"""Plan Observation: {self.plan_status.obs}
-        Action Observation: {self.history_action_status.obs}
+        return f"""Plan Observation: 
+        {self.plan_status.obs}
+        
+        Action Observation:
+        {self.history_action_status.obs}
         """
     
     @property
@@ -195,18 +198,33 @@ class HistoryActionStatus(Observable):
     """Record all history actions execution information
     
     Args:
-        _action_status_list(list[ActionStatus]): a list of action status. Default to `[]`.
+        subplans_actions_hist(list[ActionStatus]): a list of action status. Default to `[]`.
     """
 
     def __init__(self):
-        self._action_status_list:list[ActionStatus] = []
+        self.subplans_actions_hist:dict[str, list[ActionStatus]] = {}
 
-    def append(self, action_status:"ActionStatus"):
-        self._action_status_list.append(action_status)
+    def append(self, subplan_detailed_info:str, action_status:"ActionStatus"):
+        if not subplan_detailed_info in self.subplans_actions_hist.keys():
+            self.subplans_actions_hist[subplan_detailed_info] = []
+        self.subplans_actions_hist[subplan_detailed_info].append(action_status)
+
+    def get_subplan_actions_obs(self, subplan_detailed_info:str) -> str:
+
+        if subplan_detailed_info in self.subplans_actions_hist.keys():
+            actions_status_list = self.subplans_actions_hist[subplan_detailed_info]
+            return '\n'.join([action_status.obs for action_status in actions_status_list])
+        raise KeyError(f"Passing an un-existing key to HistoryActionStatus: {subplan_detailed_info}")
 
     @property
     def obs(self):
-        return "\n".join([f"- {action_status}" for action_status in self._action_status_list])
+        _obs = ""
+        for subplan, action_status_list in self.subplans_actions_hist.items():
+            _title = f"Subplan: {subplan.detailed_info}"
+            _actions = '\n'.join([f'{i}. {action_status.obs}' for i, action_status in enumerate(action_status_list)])
+            _complete_subplan_action_info = _title + '\n' + _actions
+            _obs += _complete_subplan_action_info
+        return _obs
 
 class ActionStatus(Observable):
 
