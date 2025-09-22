@@ -2,6 +2,7 @@ import json
 from typing import Literal, Union, Optional
 from pydantic import BaseModel
 from openai.types.chat.chat_completion_message_tool_call import Function
+from openai.types.chat.chat_completion_message_function_tool_call import ChatCompletionMessageFunctionToolCall
 
 
 class MultiModalitySchema(BaseModel):
@@ -96,33 +97,20 @@ class ParsedToolFunction(BaseModel):
     """ parsed tool function 
     
     Args:
+        tool_call_id(str): function calling tool id through completion.choices[0].message.tool_calls[0].id.
         name(str): to be called function name
         arguments(dict): arguments to be passed in `name` function in a json format.
     """
 
+    tool_call_id:str
     name: str
     arguments: dict
 
-class ToolCall(BaseModel):
-    """ Tool call information
-    
-    Args:
-        id(str): response tool id in this round
-        type(str): tool type and current only support `function`
-        function(ToolFunction): tool function includes called tool name and arguments.
-        index(int): tool information index in tool_calls
-    """
-    
-    id: str
-    type: str
-    function: Function
-    index: int
-
 class Message(BaseModel):
     role: Literal["user", "assistant", "system", "tool"]
-    content: Union[str, list[MultiModalitySchema]]
+    content: Optional[Union[str, list[MultiModalitySchema]]] = None
     partial: Optional[bool] = None
-    tool_calls: Optional[list[ToolCall]] = None
+    tool_calls: Optional[list[ChatCompletionMessageFunctionToolCall]] = None
     tool_call_id: Optional[str] = None
 
     @classmethod
@@ -130,7 +118,7 @@ class Message(BaseModel):
         return cls(role='user', content=content)
     
     @classmethod
-    def assistant_message(cls, content, partial:Optional[bool]=None, tool_calls:list[ToolCall]=None):
+    def assistant_message(cls, content:Optional[str]=None, partial:Optional[bool]=None, tool_calls:list[ChatCompletionMessageFunctionToolCall]=None):
         return cls(role="assistant", content=content, partial=partial, tool_calls=tool_calls)
     
     @classmethod
@@ -138,13 +126,14 @@ class Message(BaseModel):
         return cls(role="system", content=content)
     
     @classmethod
-    def tool_message(cls, content: str, tool_call_id:Optional[str]):
+    def tool_message(cls, content: str, tool_call_id:Optional[str]=None):
         return cls(role="tool", content=content, tool_call_id=tool_call_id)
     
-def convert_args_to_json(func_name:str, args:str) -> Optional[ParsedToolFunction]:
+def convert_args_to_json(tool_call_id: str, func_name: str, args: str) -> Optional[ParsedToolFunction]:
     """ parse ToolFunction to ParsedToolFunction
     
     Args:
+        tool_call_id(str): calling tool function id.
         func_name(str): calling function name
         args(str): a args string in openai Function type. Probably it's not a standard json.
 
@@ -153,7 +142,7 @@ def convert_args_to_json(func_name:str, args:str) -> Optional[ParsedToolFunction
     """
     try:
         parsed_args:dict = json.loads(args)
-        return ParsedToolFunction(name=func_name, arguments=parsed_args)
+        return ParsedToolFunction(tool_call_id=tool_call_id, name=func_name, arguments=parsed_args)
     except json.JSONDecodeError as jde:
         print(f"Failed to decode arguments {args} of function {func_name}. Please make the arguments is a valid json string.")
         return None

@@ -39,7 +39,7 @@ class LLM(BaseModel):
         params:LLMGenParams,
         tools:Optional[list[Tool]]=None,
         asynchronous:bool=False
-    ) -> Union[str, list[ParsedToolFunction], ChatCompletion]:
+    ) -> Union[str, tuple[list[ParsedToolFunction], list[ChatCompletionMessageFunctionToolCall]], ChatCompletion]:
         """ generate response from llm and track with opik
         It's forbidden to pass `params.stream=True` and `tools=[...]` at the same time because streamly parse tool function is more complex than stream=False.
         Streamly accept tools and parse tool will be supported in the later version.
@@ -69,7 +69,7 @@ class LLM(BaseModel):
         prompts:list[Message],
         params:LLMGenParams,
         tools:Optional[list[dict[str, str|dict]]]=None
-    ) -> str | list[ParsedToolFunction]:
+    ) -> str | tuple[list[ParsedToolFunction], list[ChatCompletionMessageFunctionToolCall]]:
         """ generate response sync
         
         Args:
@@ -81,7 +81,7 @@ class LLM(BaseModel):
             str: llm response
             list[ParsedToolFunction]: a list of parsed tool function
         """
-        print(tools)
+        
         _prompts = [prompt.model_dump(exclude_none=True) for prompt in prompts]
         _params = params.model_dump(exclude_none=True)
         completion:ChatCompletion = self.client.chat.completions.create(
@@ -97,13 +97,14 @@ class LLM(BaseModel):
             tool_calls:List[ChatCompletionMessageFunctionToolCall] = completion.choices[0].message.tool_calls
             parsed_tool_calls:List[ParsedToolFunction] = []
             for tool_call in tool_calls:
+                tool_call_id = tool_call.id
                 func = tool_call.function
-                parsed_tool_function:Optional[ParsedToolFunction] = convert_args_to_json(func_name=func.name, args=func.arguments)
+                parsed_tool_function:Optional[ParsedToolFunction] = convert_args_to_json(tool_call_id=tool_call_id, func_name=func.name, args=func.arguments)
                 if parsed_tool_function is not None:
                     parsed_tool_calls.append(parsed_tool_function)
                 else:
                     print(f"func[{func.name}] arguments is invalid and cannot be parsed into json: {func.arguments}")
-            return parsed_tool_calls
+            return parsed_tool_calls, tool_calls
         
         else:
             # str

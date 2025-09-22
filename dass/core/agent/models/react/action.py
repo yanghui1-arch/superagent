@@ -8,11 +8,11 @@ class Action(BaseModel):
     """ Action by agent
     
     Args:
-        id(UUID): action id
+        tool_call_id(str): function calling id.
         tool(Tool): calling tool
         tool_params(Optional[dict]): tool input parameters. Default to None.
     """
-    id: UUID = uuid4()
+    tool_call_id: str
     tool: Tool
     tool_params: Optional[dict] = None
 

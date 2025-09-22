@@ -80,6 +80,7 @@ class Tool(BaseModel):
     def __call__(self, *args, **kwargs):
         try:
             res = self.func(*args, **kwargs)
+            print(f"[DEBUG] Tool params: {kwargs}")
             return ToolResult(code=ResultFlag.SUCCESS, msg=res)
         except Exception as e:
             return ToolResult(code=ResultFlag.ERROR, msg=e)
@@ -99,6 +100,10 @@ class ResultFlag(Enum):
 class ToolResult(BaseModel):
     code: ResultFlag
     msg: Any
+
+    def model_post_init(self, context):
+        if isinstance(self.msg, str) == False:
+            self.msg = str(self.msg)
 
 def tool(func:callable):
     """ tool wrapper
