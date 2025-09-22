@@ -1,37 +1,24 @@
-from typing import Optional, Any, ClassVar, List, Dict
-from queue import Queue
+from typing import Optional, Any, ClassVar, List, Dict, Literal
+from uuid import UUID
+from uuid import uuid4
 from ..agent import Agent
 from ...engine.llm import Message
-from ...engine.message import ParsedToolFunction
 from ...engine.llm import LLMGenParams
-from .models.react.plan import Plan, SubPlan, TODOList, TODOItem
+from .models.react.plan import Plan, SubPlan
 from .models.react.action import Action
 from .models.react.observation import Observation
-from .models.react.observation import PlanStatus, SubplanStatus, TODOItemStatus, ActionStatus
-from .models.result import ThinkResult, ParsedThinkResult, ExecutionResult
-from ...kits.tool import Tool
-from ..prompts import sys_prompt, think_prompt, plan_prompt
-from ..prompts import build_think_prompt
+from .models.react.observation import SubplanStatus
+from .models.result import ThinkResult, ExecutionResult
+from ...kits.tool import Tool, ToolResult
+from ..prompts import sys_prompt, final_answer_sys_prompt, think_prompt, plan_prompt, start_solve_prologue
+from ..prompts import build_think_prompt, build_plan_prompt
 from ..prompts import (
     OBSCURE_QUESTION_TAG,
     SOLVED_TAG,
     PLAN_TAG,
     PLAN_END_TAG,
     EASY_TAG,
-    EASY_END_TAG,
-    TODO_LIST_TAG,
-    NO_COMPLETED_TAG,
-    COMPLETED_TAG,
-    ORDER_START_TAG,
-    ORDER_END_TAG,
-    ANALYZE_START_TAG,
-    ANALYZE_END_TAG,
-    DECOMPOSE_START_TAG,
-    DECOMPOSE_END_TAG,
-    MAKE_TODO_LIST_START_TAG,
-    MAKE_TODO_LIST_END_TAG,
-    TODO_ITEM_START_TAG,
-    TODO_ITEM_END_TAG
+    EASY_END_TAG
 )
 from ...config.load import load_llm_config, load_embedding_config
 
@@ -65,36 +52,38 @@ class SuperAgent(Agent):
         if self.available_tools:
             sys_str = sys_prompt.format(name=self.__class__.__name__, available_tools=self._format_tool_list(self.available_tools))                
             self.system_prompt:Message = Message.system_message(sys_str)
+        self.final_answer_sys_prompt:Message = Message.system_message(final_answer_sys_prompt)
         
         self.plan:Optional[Plan] = None
         self.observation: Optional[Observation] = None
+        self.conversation_uuid: Optional[UUID] = None
 
-    async def run(self, user_input:str) -> Any:
+    async def run(self, user_input:str) -> str:
         """ agent core execution """
         
+        if not self.conversation_uuid:
+            # create conversation uuid and init the system prompt.
+            print(f"[INFO] {self.__class__.__name__} doesn't have conversation uuid. So create one for her.")
+            self.conversation_uuid = uuid4()
+            self.context_manager.append(self.conversation_uuid, message=self.system_prompt)
         question:str = user_input
         plan:Plan|str = await self.planning(user_question=question)
 
         # str means result directly
         if isinstance(plan, str):
+            # append assistant message
+            self.context_manager.append(conversation_uuid=self.conversation_uuid, message=Message.assistant_message(plan))
             return plan
 
         self.plan = plan
-        self.observation = Observation(plan=plan)
-
-        plan_status_obs:str = await self.complete_plan(plan=plan)
-        ass_prompt = f"I can make a plan to answer your question. And here is my plan and its completion status.\n{plan_status_obs}"
-        usr_prompt = f"I have known your plan and it's good. Now you can answer me question based on your plan status."
-
-        answer = await self._request_llm(messages=[self.system_prompt, Message.user_message(user_input), Message.assistant_message(ass_prompt), Message.user_message(usr_prompt)])
+        answer = await self.complete_plan(plan=plan)
         
         # reset plan to None
         self.plan = None
-        self.observation = None
 
         return answer
 
-    async def complete_plan(self, plan:Plan) -> str:
+    async def complete_plan(self, plan:Plan):
         """ Super agent finish one plan 
         
         Args:
@@ -106,69 +95,53 @@ class SuperAgent(Agent):
 
         print(f"[INFO] super agent is completing plan.")
         subplans = plan.subplans
-        solved_subplan_status:list[SubplanStatus] = []
-        
-        for subplan in subplans:
-            done = False
-            solution = None
-            # get subplan status
-            subplan_status = [
-                _subplan_status 
-                for _subplan_status in self.observation.plan_status.subplan_status_list 
-                if _subplan_status.subplan.detailed_info == subplan.detailed_info
-            ][0]
 
-            while not done:
-                execution_res:ExecutionResult = await self.execute(subplan=subplan, subplan_status=subplan_status, solved_subplan_status=solved_subplan_status)
-                done = execution_res.done
-                solution = execution_res.final_answer
-            # mark subplan complete
-            subplan.completed = True
-            subplan_status.solution = solution
-            solved_subplan_status.append(subplan_status)
+        for idx, subplan in enumerate(subplans):
+            final_solution = await self.complete_subplan(subplan=subplan)
+            self.context_manager.append(
+                conversation_uuid=self.conversation_uuid,
+                message=Message.assistant_message(final_solution)
+            )
+
+        usr_prompt = f"So tell me the final answer."
+        answer:str = await self._request_llm(
+            messages=self.context_manager.context(conversation_uuid=self.conversation_uuid) + [Message.user_message(usr_prompt)]
+        )
+        # append assistant message
+        self.context_manager.append(conversation_uuid=self.conversation_uuid, message=Message.assistant_message(answer))
         
         print(f"[INFO] super agent has completed plan.")
-        return self.observation.plan_status.obs
+        return answer
 
-    async def execute(self, subplan:SubPlan, subplan_status:SubplanStatus, solved_subplan_status:list[SubplanStatus]) -> ExecutionResult:
-        """ Execute Observation -> Think -> Action once
-        It focus on a small subplan and result is also for subplan
+    async def complete_subplan(self, subplan:SubPlan) -> str:
+        """ complete a subplan
         
         Args:
-            subplan(Subplan): subplan of plan
-            subplan_status(SubplanStatus): subplan status
+            subplan(SubPlan): a subplan
         """
-        print(f"[INFO] Start executing subplan...: \n    {subplan.detailed_info}")
 
-        print(f"[DEBUG] subplan observations: {subplan_status.obs}")
-        print(f"[DEBUG] plan observations: {solved_subplan_status}")
-        observations = subplan_status.obs
-        if solved_subplan_status:
-            observations += "<solved_subplan_status>"
-            for solved_status in solved_subplan_status:
-                observations += solved_status.solution if solved_status.solution else ""
-            observations += "</solved_subplan_status>"
+        done = False
+        final_solution:str|None = None
 
-        think_result:ThinkResult = await self.think(
-            subplan_instance=subplan,
-            subplan_status=subplan_status,
-            observations=observations
-        )
-
-        # record action observations
-        for action in think_result.actions:
-            res = action.act()
-            action_status = ActionStatus(target_task=subplan.detailed_info, action=action, execution_result=res)
-            subplan_status.append_process(process=action_status)
-
-        # other
-        if think_result.selection == "make_todo_list":
-            assert self.plan, "Failed to make todo list because somewhere calls SuperAgent.execute() but not any plan."
-            subplan.todo_list = think_result.subplan.todo_list
-        
-        print(f"[INFO] subplan: {subplan.detailed_info} DONE: {think_result.done}")
-        print(f"[INFO] End execute subplan...: {subplan.detailed_info}")
-        return ExecutionResult(done=think_result.done, final_answer=think_result.final_answer)
+        while not done:
+            # think
+            think_res:ThinkResult = await self.think(subplan=subplan)
+            # solution
+            if think_res.done == True:
+                final_solution = think_res.final_answer
+                done = think_res.done
+            # action & observe
+            else:
+                for action in think_res.actions:
+                    tool_result:ToolResult = action.act()
+                    # append tool message
+                    print(f"tool call id: {action.tool_call_id}, content: {tool_result.msg}, type: {type(tool_result.msg)}")
+                    self.context_manager.append(
+                        conversation_uuid=self.conversation_uuid, 
+                        message=Message.tool_message(content=tool_result.msg, tool_call_id=action.tool_call_id)
+                    )
+                    
+        return final_solution
 
 
     async def planning(self, user_question:str) -> Plan | str:
@@ -185,23 +158,26 @@ class SuperAgent(Agent):
 
         print(f"[INFO] Try to solve the `{user_question}`. If cannot solve it directly, super agent will switch to make a plan.")
 
-        plan_prompt_str = plan_prompt.format(
-            user_question=user_question,
-            PLAN_TAG=PLAN_TAG,
-            PLAN_END_TAG=PLAN_END_TAG,
-            EASY_TAG=EASY_TAG,
-            EASY_END_TAG=EASY_END_TAG,
-            NO_COMPLETED_TAG=NO_COMPLETED_TAG,
-            SOLVED_TAG=SOLVED_TAG
-        )
+        plan_prompt_str = build_plan_prompt(user_question=user_question)
         plan_prompt_msg = Message.user_message(plan_prompt_str)
-        _plan:str = self.llm.generate_sync(prompts=[self.system_prompt, plan_prompt_msg], params=self.llm_gen_params)
+        # append user message
+        self.context_manager.append(conversation_uuid=self.conversation_uuid, message=plan_prompt_msg)
+        _plan:str = self.llm.generate_sync(
+            prompts=self.context_manager.context(conversation_uuid=self.conversation_uuid), 
+            params=self.llm_gen_params
+        )
+        # append assistant message
+        self.context_manager.append(
+            conversation_uuid=self.conversation_uuid,
+            message=Message.assistant_message(content=_plan)
+        )
 
         if not isinstance(_plan, str):
             raise TypeError(f"Expected `str` type but return `{type(_plan)}` type when super agent make plans.")
         
         print(_plan)
-        if EASY_TAG in _plan and SOLVED_TAG in -1:
+        # solve directly.
+        if EASY_TAG in _plan and SOLVED_TAG in _plan:
             # calculation function is decided by prompt designs.
             solved_idx = _plan.find(SOLVED_TAG)
             start_idx = solved_idx + len(SOLVED_TAG)
@@ -210,6 +186,7 @@ class SuperAgent(Agent):
 
             print(f"[INFO] super agent has successfully solve the question.")
             return result
+        # make a plan
         else:
             if PLAN_TAG not in _plan:
                 raise ValueError(f"Super agent plan generation is not expected without {PLAN_TAG}.")
@@ -228,9 +205,7 @@ class SuperAgent(Agent):
 
     async def think(
         self,
-        subplan_instance:SubPlan,
-        subplan_status:SubplanStatus,
-        observations:Optional[str]=None,
+        subplan:SubPlan
     ) -> ThinkResult:
         """ Super agent think
         Include four strategies: make a to-do list, choose tools, break question into small tasks or give the final answer.
@@ -245,87 +220,55 @@ class SuperAgent(Agent):
             ThinkResult: super agent views for a subplan includes its selection, subplan, terminate, actions list and final answer
         """
 
-        subplan:str = subplan_instance.detailed_info
-        todo_list:Optional[TODOList] = subplan_instance.todo_list
-
-        _selection: Optional[str] = None
+        _selection: Optional[Literal['solved', 'obscure', 'call_tool']] = None
         _actions:List[Action] = []
-        _subplan:Optional[SubPlan] = None
         _done = False
         _final_answer:Optional[str] = None
         
-        observations = "" if not observations else observations
-        _think_prompt = build_think_prompt(
-            subplan=subplan,
-            observations=observations,
-            todo_list=todo_list
-        )
+        # TODO: update for lower prompt words 
+        _think_prompt = build_think_prompt(subplan=subplan)
+        self.context_manager.append(self.conversation_uuid, message=Message.user_message(content=_think_prompt))
+
         response = await self.llm.generate(
-            [self.system_prompt, Message.user_message(_think_prompt)], 
+            self.context_manager.context(conversation_uuid=self.conversation_uuid),
             LLMGenParams(temperature=0.8),
             tools=self.available_tools
         )
         print(f"[INFO]: Super agent think content:\n{response}")
 
         # Actions that super agent calling tools directly
-        if isinstance(response, list):
-            for tool in response:
+        # tool message is appended outsider
+        if isinstance(response, tuple):
+            _selection = 'call_tool'
+            parse_tool_functions = response[0]
+            tool_calls = response[1]
+
+            # append a calling assistant message
+            self.context_manager.append(conversation_uuid=self.conversation_uuid, message=Message.assistant_message(content=None, tool_calls=tool_calls))
+
+            for tool in parse_tool_functions:
                 match_tool:Tool = [_tool for _tool in self.available_tools if _tool.name == tool.name][0]
                 args = tool.arguments
-                _actions.append(Action(tool=match_tool, tool_params=args))
+                _actions.append(Action(tool_call_id=tool.tool_call_id, tool=match_tool, tool_params=args))
         
-        # not calling tool
+        # not calling tool -> solve directly or raise an obscure information.
         elif isinstance(response, str):
-            parsed_result:ParsedThinkResult = self._parse_think(think_response=response)
+            # append assistant message
+            self.context_manager.append(
+                conversation_uuid=self.conversation_uuid,
+                message=Message.assistant_message(content=response)
+            )
+            parsed_result:ThinkResult = self._parse_think(think_response=response)
             _selection = parsed_result.selection
-            if parsed_result.selection == "make_todo_list":
-                _subplan = SubPlan(detailed_info=subplan, todo_list=parsed_result.info)
-            elif parsed_result.selection == "solved" or parsed_result.selection == "obscure":
-                _final_answer = parsed_result.info
-            # select analyze
-            # decompose
-            elif isinstance(parsed_result.info, TODOList):
-                _subplan = SubPlan(detailed_info=parsed_result.selected_todo_item, todo_list=parsed_result.info)
-            # solve one todo item to solve
-            else:
-                assert todo_list, "not pass todo list when try to analyze the subplan."
-                assert subplan_status.todo_list_status is not None, f"The subplan `{subplan}` doesn't have any todo list so that cannot change the status. Please make sure SubplanStatus includes todo list status."
-                selected_todo_item_str = parsed_result.selected_todo_item
-                todo_item:TODOItem = next((todo_item for todo_item in todo_list.todo_items() if todo_item.content == selected_todo_item_str))
-                now_todo_list = self._complete_todo_item(todo_list=todo_list, completing_todo_item=todo_item)
-                todo_item_status:TODOItemStatus = subplan_status.todo_list_status.index(todo_item=todo_item)
-                todo_item_status.solution = parsed_result.info
-                print(f"[INFO] Latest todo list: {now_todo_list}")
-
+            _final_answer = parsed_result.final_answer
             _done = parsed_result.done
 
         return ThinkResult(
             selection=_selection,
-            subplan=_subplan,
             actions=_actions,
-            done=_done, 
+            done=_done,
             final_answer=_final_answer
         )
-
-    def _complete_todo_item(self, todo_list:TODOList, completing_todo_item:TODOItem) -> TODOList:
-        """ complete a todo item of todo list
-        Find the completing todo item in a todo list and mark it as completed with markdown format. 
-
-        Args:
-            todo_list(TODOList): todo list
-            completing_todo_item(TODOItem): completing todo item
-        
-        Returns:
-            TODOList: current todo list
-        """
-
-        try:
-            todo_item_idx = todo_list.todo_items.index(completing_todo_item)
-            todo_list = todo_list.complete_todo_item(todo_item_idx=todo_item_idx)
-        except ValueError as ve:
-            print(f"[WARNING]: No {completing_todo_item} in {todo_list}")
-        finally:
-            return todo_list
 
     def _format_tool_list(self, tool_list:list[Tool]):
         """ format tool list to a markdown list 
@@ -340,7 +283,7 @@ class SuperAgent(Agent):
         ]
         return '\n'.join(formatted_tools)
 
-    def _parse_think(self, think_response:str) -> ParsedThinkResult:
+    def _parse_think(self, think_response:str) -> ThinkResult:
         """ parse think content
         CANNOT parse tool calling action. Passing think before ensuring the think content is not tool calling
         Super agent has several selections during thinking. The function is to parse the think reponse and try to parse
@@ -351,94 +294,39 @@ class SuperAgent(Agent):
             think(str): think content which is not tool calling
 
         Returns:
-            ParsedThinkResult: parsed think result
+            ThinkResult: think result
 
         Raises:
             ValueError: if think_response is in invalid format
-        """
-        
-        # select the first
-        if MAKE_TODO_LIST_START_TAG in think_response and TODO_LIST_TAG in think_response:
-            todo_list = self._parse_todo_list(think_response)
-            return ParsedThinkResult(selection="make_todo_list", info=todo_list)
+        """           
 
-        # select the second
-        elif ANALYZE_START_TAG in think_response:
-            # select one not completed todo item
-            selected_todo_item:Optional[str] = None
-            if think_response.find(TODO_ITEM_START_TAG):
-                todo_item_start_idx = think_response.find(TODO_ITEM_START_TAG) + len(TODO_ITEM_START_TAG)
-                todo_item_end_idx = think_response.find(TODO_ITEM_END_TAG)
-                selected_todo_item = think_response[todo_item_start_idx: todo_item_end_idx]
-
-            # 2.1
-            if SOLVED_TAG in think_response:
-                solution_start_idx = think_response.find(SOLVED_TAG) + len(SOLVED_TAG)
-                solution = think_response[solution_start_idx:-len(ANALYZE_END_TAG)]
-                return ParsedThinkResult(selection="analyze", done=False, info=solution, selected_todo_item=selected_todo_item)
-            # 2.2
-            if DECOMPOSE_START_TAG in think_response and DECOMPOSE_START_TAG in think_response and TODO_LIST_TAG in think_response:
-                todo_list = self._parse_todo_list(think_response)
-                return ParsedThinkResult(selection="analyze", done=False, info=todo_list, selected_todo_item=selected_todo_item)                
-
-        # select fourth
-        elif SOLVED_TAG in think_response:
+        # select first
+        if SOLVED_TAG in think_response:
             start_idx = think_response.find(SOLVED_TAG) + len(SOLVED_TAG)
             final_answer = think_response[start_idx:]
-            return ParsedThinkResult(selection="solved", done=True, info=final_answer) 
+            return ThinkResult(selection="solved", done=True, final_answer=final_answer) 
         
-        # select fifth
+        # select third
         elif OBSCURE_QUESTION_TAG in think_response:
             start_idx = think_response.find(OBSCURE_QUESTION_TAG) + len(OBSCURE_QUESTION_TAG)
-            return ParsedThinkResult(selection="obscure", done=True, info=think_response[start_idx:])
+            obscure_info = think_response[start_idx:]
+            return ThinkResult(selection="obscure", done=True, final_answer=obscure_info)
 
         raise ValueError("Super agent think response is not in a valid format. Try to make super agent think again with different llm_gen_params.")
 
-    def _parse_todo_list(self, response:str) -> TODOList:
-        """ parse a text with TODO_LIST_TAG 
-        The text should include the paragraph texts like following:
-        ```
-        {TODO_LIST_TAG}
-        {NO_COMPLETED_TAG} ... {ORDER_START_TAG}1{ORDER_END_TAG}
-        ```
-        Row is no-completed todo item if it hasn't order. 
-
-        Args:
-            response(str): text with TODO_LIST_TAG
-        
-        Return:
-            TODOList: a todo list
-        """
-
-        start_idx = response.find(TODO_LIST_TAG) + len(TODO_LIST_TAG) + 1
-        todo_list:List[str] = response[start_idx:].splitlines()
-        todo_items = []
-        for idx, item in enumerate(todo_list):
-            order = idx
-            content = item
-
-            if ORDER_START_TAG in item and ORDER_END_TAG in item:
-                order_start_idx = item.find(ORDER_START_TAG)
-                order_end_idx = item.find(ORDER_END_TAG)
-                # to get executing order
-                order_str:str = item[order_start_idx + len(ORDER_START_TAG): -order_end_idx]
-                order = int(order_str.strip())
-                # to get item content without order information
-                content = item[:order_start_idx]
-
-            todo_item = TODOItem(order=order, content=content)
-            todo_items.append(todo_item)
-        return TODOList(plan_list=todo_items)
-
-    async def _request_llm(self, messages:list[Message]):
+    async def _request_llm(self, messages:list[Message], tools=None):
         """ request a list of message to llm """
         
-        response = await self.llm.generate(
+        if tools is None:
+            return await self.llm.generate(
+                messages,
+                LLMGenParams(temperature=0.8)
+            )
+        return await self.llm.generate(
             messages,
             LLMGenParams(temperature=0.8),
             tools=self.available_tools
         )
-        return response
 
     def request_llm(message:list[Message]):
         ...
