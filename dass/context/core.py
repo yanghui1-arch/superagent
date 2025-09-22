@@ -16,7 +16,6 @@ Context = Message
 
 class ContextEngine(BaseModel, ABC):
     """ ContextEngine manages conversations with llm. """
-    context:dict[UUID, list[Message]] = {}
 
     class Config:
         extra = "allow"
@@ -56,6 +55,7 @@ class MessageContextEngine(ContextEngine):
 
     llm_config: LLMConfig
     llm_gen_param: Optional[LLMGenParams] = None
+    _context:dict[UUID, list[Message]] = {}
 
     def model_post_init(self, context):
         if self.llm_config:
@@ -78,10 +78,10 @@ class MessageContextEngine(ContextEngine):
             message(Message): new message
         """
 
-        if conversation_uuid not in self.context.keys():
+        if conversation_uuid not in self._context.keys():
             print(f"{conversation_uuid} is not in MessageContextEngine. MessageContextEngine is creating a record for {conversation_uuid}.")
-            self.context[conversation_uuid] = []
-        self.context[conversation_uuid].append(message)
+            self._context[conversation_uuid] = []
+        self._context[conversation_uuid].append(message)
 
     def extract(self, query:str, conversation_uuid:UUID) -> ExtractResult:
         """ Extract relative content to query in conversation
@@ -134,20 +134,19 @@ class MessageContextEngine(ContextEngine):
     def compress(self):
         ...
 
-    @property
     def context_for_llm(self, conversation_uuid:UUID) -> list[dict]:
         """ context for llm directly not transform again """
 
-        if conversation_uuid not in self.context.keys():
+        if conversation_uuid not in self._context.keys():
             return []
-        conversation_ctx = self.context[conversation_uuid]
+        conversation_ctx = self._context[conversation_uuid]
         llm_ctx:list[dict] = [ctx.model_dump(exclude_none=True) for ctx in conversation_ctx]
         return llm_ctx
 
-    @property
     def context(self, conversation_uuid:UUID) -> list[Message]:
-        """ message context """
+        """ context for request llm """
 
-        if conversation_uuid not in self.context.keys():
+        if conversation_uuid not in self._context.keys():
             return []
-        return self.context[conversation_uuid]
+        ctx = self._context[conversation_uuid]
+        return ctx
