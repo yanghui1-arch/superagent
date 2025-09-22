@@ -1,14 +1,11 @@
-from ._solve_prompt import start_solve_prologue
 
 __all__ = [
-    "TODO_LIST_TAG",
     "NO_COMPLETED_TAG",
     "COMPLETED_TAG",
     "OBSCURE_QUESTION_TAG",
     "SOLVED_TAG",
     "think_prompt",
-    "sys_prompt",
-    "start_solve_prologue"
+    "sys_prompt"
 ]
 
 ##################################################
@@ -54,21 +51,10 @@ PLAN_TAG = "<PLAN>"
 PLAN_END_TAG = "</PLAN>"
 EASY_TAG = "<EASY>"
 EASY_END_TAG = "</EASY>"
-TODO_LIST_TAG = "<TODO_LIST>"
 NO_COMPLETED_TAG = "- []"
 COMPLETED_TAG = "- [x]"
-ORDER_START_TAG = "<ORDER>"
-ORDER_END_TAG = "</ORDER>"
 OBSCURE_QUESTION_TAG = "<OBSCURE>"
 SOLVED_TAG = "<SOLVED>"
-ANALYZE_START_TAG = "<analyze>"
-ANALYZE_END_TAG = "</analyze>"
-DECOMPOSE_START_TAG = "<decompose_big_task>"
-DECOMPOSE_END_TAG = "</decompose_big_task>"
-MAKE_TODO_LIST_START_TAG = "<make_todo_list>"
-MAKE_TODO_LIST_END_TAG = "</make_todo_list>"
-TODO_ITEM_START_TAG = "<selected_todo_item>"
-TODO_ITEM_END_TAG = "</selected_todo_item>"
 
 """ super agent plan prompt
 Super agent will generate a plan which includes subplans. These subplans will be passed to the next stage and superagent will make detailed todo list for every subplan.
@@ -129,24 +115,8 @@ def build_plan_prompt(user_question:str) -> str:
 Super agent will think the subplan and make a todo list for it. It's very important for the whole think process. If the todo list is not enough good, the result will be worse.
 
 Args:
-    MAKE_TODO_LIST_START_TAG: make todo list start tag.
-    MAKE_TODO_LIST_END_TAG: make todo list end tag.
-    TODO_LIST_TAG: todo list tag if agent output todo list.
-    NO_COMPLETED_TAG: todo item is not completed tag.
-    COMPLETED_TAG: todo item is completed tag.
-    ORDER_START_TAG: todo item order start tag.
-    ORDER_END_TAG: todo item order end tag.
-    ANALYZE_START_TAG: analyze start tag.
-    ANALYZE_END_TAG: analyze end tag.
-    DECOMPOSE_START_TAG: decompose a todo item into more todo items start tag.
-    DECOMPOSE_END_TAG: decompose end tag.
-    TODO_ITEM_START_TAG: selection of todo item start tag.
-    TODO_ITEM_END_TAG: selection of todo item end tag.
     SOLVED_TAG: solved tag to parse the result and judge wheter the problem is solved
     OBSCURE_QUESTION_TAG: tag which mark the user question is not clear and parse it to tell user he/she need to offer more information
-    subplan: subplan
-    todo_list: current todo list
-    observations: current observations. It's all observations not just one probably.
 """
 
 think_prompt = f"""Based on all `<subplan>` and tool message content, then select a following choice.

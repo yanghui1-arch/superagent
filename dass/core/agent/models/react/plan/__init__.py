@@ -1,6 +1,5 @@
 from typing import Optional, ClassVar
 from pydantic import BaseModel
-from .todo import TODOList, TODOItem
 from .....prompts import NO_COMPLETED_TAG, COMPLETED_TAG
 
 class Plan(BaseModel):
@@ -46,20 +45,14 @@ class SubPlan(BaseModel):
 
     Args:
         detailed_info(str): detailed information about the subplan.
-        todo_list(Optional[TODOList]): todo list to achive subplan. Default to None.
         completed(bool): whether subplan is completed. Default to `False`.
     """
 
     detailed_info: str
-    todo_list: Optional[TODOList] = None
     completed: bool = False
 
     def __repr__(self):
-        todo_list:list[str] = []
-        if self.todo_list:
-            for idx, todo_item in enumerate(self.todo_list.todo_items()):
-                todo_list.append(f" {idx}. {todo_item}")
-        return f"Subplan: {self.detailed_info}\nTODO List:\n{"\n".join(todo_list)}"
+        return f"Subplan: {self.detailed_info}\nCompleted: {"completed" if self.completed else "no-completed"}"
 
 
 __all__ = [
