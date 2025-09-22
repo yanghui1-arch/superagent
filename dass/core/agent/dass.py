@@ -106,6 +106,8 @@ class SuperAgent(Agent):
 
         print(f"[INFO] super agent is completing plan.")
         subplans = plan.subplans
+        solved_subplan_status:list[SubplanStatus] = []
+        
         for subplan in subplans:
             done = False
             solution = None
@@ -117,15 +119,18 @@ class SuperAgent(Agent):
             ][0]
 
             while not done:
-                execution_res:ExecutionResult = await self.execute(subplan=subplan, subplan_status=subplan_status)
+                execution_res:ExecutionResult = await self.execute(subplan=subplan, subplan_status=subplan_status, solved_subplan_status=solved_subplan_status)
                 done = execution_res.done
                 solution = execution_res.final_answer
+            # mark subplan complete
+            subplan.completed = True
             subplan_status.solution = solution
+            solved_subplan_status.append(subplan_status)
         
         print(f"[INFO] super agent has completed plan.")
         return self.observation.plan_status.obs
 
-    async def execute(self, subplan:SubPlan, subplan_status:SubplanStatus) -> ExecutionResult:
+    async def execute(self, subplan:SubPlan, subplan_status:SubplanStatus, solved_subplan_status:list[SubplanStatus]) -> ExecutionResult:
         """ Execute Observation -> Think -> Action once
         It focus on a small subplan and result is also for subplan
         
@@ -135,33 +140,31 @@ class SuperAgent(Agent):
         """
         print(f"[INFO] Start executing subplan...: \n    {subplan.detailed_info}")
 
-        print(f"[DEBUG] observations: {subplan_status.obs}")
+        print(f"[DEBUG] subplan observations: {subplan_status.obs}")
+        print(f"[DEBUG] plan observations: {solved_subplan_status}")
+        observations = subplan_status.obs
+        if solved_subplan_status:
+            observations += "<solved_subplan_status>"
+            for solved_status in solved_subplan_status:
+                observations += solved_status.solution if solved_status.solution else ""
+            observations += "</solved_subplan_status>"
+
         think_result:ThinkResult = await self.think(
             subplan_instance=subplan,
             subplan_status=subplan_status,
-            observations=subplan_status.obs
+            observations=observations
         )
 
         # record action observations
         for action in think_result.actions:
             res = action.act()
             action_status = ActionStatus(target_task=subplan.detailed_info, action=action, execution_result=res)
-            self.observation.history_action_status.append(subplan_detailed_info=subplan.detailed_info, action_status=action_status)
-            subplan_status.solution = self.observation.history_action_status.get_subplan_actions_obs(subplan_detailed_info=subplan.detailed_info)
+            subplan_status.append_process(process=action_status)
 
         # other
         if think_result.selection == "make_todo_list":
             assert self.plan, "Failed to make todo list because somewhere calls SuperAgent.execute() but not any plan."
             subplan.todo_list = think_result.subplan.todo_list
-        elif think_result.selection == "analyze":
-            # decompose a todo item into smaller subplan with a todo list.
-            # it will be executed successfully here
-            if think_result.subplan:
-                exec_res:ExecutionResult = await self.execute(subplan=think_result.subplan, subplan_status=SubplanStatus(subplan=think_result.subplan))
-                return exec_res
-            # super agent select one todo item and directly solve it without any tools.
-            else:
-                ...
         
         print(f"[INFO] subplan: {subplan.detailed_info} DONE: {think_result.done}")
         print(f"[INFO] End execute subplan...: {subplan.detailed_info}")
@@ -273,7 +276,7 @@ class SuperAgent(Agent):
         
         # not calling tool
         elif isinstance(response, str):
-            parsed_result:ParsedThinkResult = self._parse_think(think=response)
+            parsed_result:ParsedThinkResult = self._parse_think(think_response=response)
             _selection = parsed_result.selection
             if parsed_result.selection == "make_todo_list":
                 _subplan = SubPlan(detailed_info=subplan, todo_list=parsed_result.info)
@@ -391,7 +394,7 @@ class SuperAgent(Agent):
 
         raise ValueError("Super agent think response is not in a valid format. Try to make super agent think again with different llm_gen_params.")
 
-    def _parse_todo_list(response:str) -> TODOList:
+    def _parse_todo_list(self, response:str) -> TODOList:
         """ parse a text with TODO_LIST_TAG 
         The text should include the paragraph texts like following:
         ```
@@ -418,7 +421,7 @@ class SuperAgent(Agent):
                 order_start_idx = item.find(ORDER_START_TAG)
                 order_end_idx = item.find(ORDER_END_TAG)
                 # to get executing order
-                order_str:str = item[order_start_idx + len(ORDER_END_TAG): order_end_idx]
+                order_str:str = item[order_start_idx + len(ORDER_START_TAG): -order_end_idx]
                 order = int(order_str.strip())
                 # to get item content without order information
                 content = item[:order_start_idx]

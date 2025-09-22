@@ -80,20 +80,51 @@ class SubplanStatus(Observable):
 
     NOT_SOLVED = "It hasn't been solved yet."
 
-    def __init__(self, subplan:SubPlan, solution:Optional[str]=None):
+    def __init__(self, subplan:SubPlan, solution:str|None=None):
         self.subplan = subplan
-        self.solution:Optional[str] = solution
+        self.solution:str|None = solution
         self.todo_list_status = None
+        self._process:list[ActionStatus] = []
         if subplan.todo_list:
             self.todo_list_status = TODOListStatus(todo_list=subplan.todo_list)
 
     def solved(self) -> bool:
         return not(self.solution is None and (self.todo_list_status is None or not self.todo_list_status.solved()))
+    
+    def append_process(self, process:"ActionStatus"):
+        """ Append a process into _process list 
+        
+        Args:
+            process(ActionStatus): a process to solve the subplan.
+        """
+
+        self._process.append(process)
+
+    @property
+    def solve_process(self):
+        """ solution process through tools """
+
+        if len(self._process) == 0:
+            return "Not use any tool to solve the subplan."
+
+        if self.subplan.completed:
+            complete_str = "Complete!"
+            process = complete_str + "\n" + "\n".join([f"{i} Step: \n" + p.obs for i, p in enumerate(self._process)])
+            process += "\n" + f"solution: {self.solution}"
+        else:
+            complete_str = "It's in progress maybe..."
+            process = complete_str + "\n" + "\n".join([f"{i} Step: \n" + p.obs for i, p in enumerate(self._process)])
+        
+        return process
 
     @property
     def obs(self) -> str:
         if not self.todo_list_status:
-            return self.solution if self.solution else SubplanStatus.NOT_SOLVED
+            if self.solution:
+                return self.solution
+            if self._process:
+                return self.solve_process
+            return SubplanStatus.NOT_SOLVED
 
         return f"""Subplan: {self.subplan.detailed_info}\tStatus: {"completed" if self.solved() else "no-completed"}
         {self.todo_list_status.obs}
@@ -112,7 +143,7 @@ class TODOListStatus(Observable):
 
     def __init__(self, todo_list:TODOList):
         self.todo_list = todo_list
-        self.solution:Optional[str] = None
+        self.solution:str|None = None
         self.todo_items_status:list[TODOItemStatus] = [TODOItemStatus(todo_item=todo_item) for todo_item in todo_list.todo_items]
 
     def index(self, todo_item:TODOItem) -> "TODOItemStatus":

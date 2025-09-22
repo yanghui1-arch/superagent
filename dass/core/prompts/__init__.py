@@ -144,47 +144,17 @@ think_prompt = f"""Based on `<subplan>`, `<todo_list>` and `<observations>` sele
         I have five todo items in my todo list. The first and the third can be executed parallely and the second and fourth should be executed following the first and the third. Finally all todo items are all executed the fifth todo item is executed.
         Based on aboving saying the first and the third item order is 1. The second and the fourth order is 2. Finally the fifth todo item order is 3.
 
-2. select first not completed todo item in `<todo_list>` and try to analyze it and solve it with available tools.
-    2.1 Your selection of no-completed todo item is so easy that you can solve the problem directly by yourself.
-    2.2 You can decompose a big task into a series of small tasks.
-    `{NO_COMPLETED_TAG}` means the todo item is not completed and `{COMPLETED_TAG}` means the todo item is completed
-    The output format should be started with {ANALYZE_START_TAG} and end with {ANALYZE_END_TAG}.
-    The element between {ANALYZE_START_TAG} and {ANALYZE_END_TAG} has two type based on which one of 2.1 and 2.2 you select.
-    If you select 2.1, the element should be started with {SOLVED_TAG}.
-    Else if you select 2.2, the element should be started with {DECOMPOSE_START_TAG} and end with {DECOMPOSE_END_TAG}. The decomposation is a todo list and output format should be following example of selecting 2.2.
-    For example:
-    If you select this action and then you think your selection of todo item can be easily solve by available tools.
-    ```
-    {ANALYZE_START_TAG}
-    {TODO_ITEM_START_TAG} ... {TODO_ITEM_END_TAG}
-    {SOLVED_TAG}...
-    {ANALYZE_END_TAG}
-    ```
-    Else if you think the todo item is so complex that you have to decompose it into more small todo items.
-    ```
-    {ANALYZE_START_TAG}
-    {TODO_ITEM_START_TAG} ... {TODO_ITEM_END_TAG}
-    {DECOMPOSE_START_TAG}
-    {TODO_LIST_TAG}:
-    {NO_COMPLETED_TAG}... {ORDER_START_TAG}1{ORDER_END_TAG}
-    {NO_COMPLETED_TAG}... {ORDER_START_TAG}2{ORDER_END_TAG}
-    {NO_COMPLETED_TAG}... {ORDER_START_TAG}3{ORDER_END_TAG}
-    {DECOMPOSE_END_TAG}
-    {ANALYZE_END_TAG}
-    ```
-
-3. fix it if the latest observation raise error. The probable reason: 
+2. fix it if the latest observation raise error. The probable reason: 
     3.1 You select a wrong tool
     3.2 You don't give the right arguments.
     3.3 The tool is wrong during developer implementing it.
-4. output the reuslt if you think you can solve it directly or you can solve it easily with `<observations>`
-   or `<subplan>` is an easy question.
+3. output the result if you think you can solve it directly or you can solve it with `<observations>` content or `<subplan>` is an easy question.
    The output format should be started with `{SOLVED_TAG}`:. 
    For example:
     ```
     {SOLVED_TAG}: I have successfully solve the problem. Now the following content is answer. ...
     ```
-5. request user for more information to solve the problem. Sometimes `<subplan>` is obscure because not everyone
+4. request user for more information to solve the problem. Sometimes `<subplan>` is obscure because not everyone
    are capable of clearly describing their needs or questions. You should be patient to request more information about it.
    The request format should be started with `{OBSCURE_QUESTION_TAG}`: .
    For example: 
@@ -200,4 +170,7 @@ Notice:
 """
 
 def build_think_prompt(subplan, todo_list, observations) -> str:
-    return think_prompt + f"<subplan>\n{subplan}\n</subplan>" + "\n" + f"<todo_list>\n{todo_list}\n</todo_list>" + "\n" + f"<observations>\n{observations}\n</observations>"
+    return f"""<subplan>{subplan}</subplan>
+    <todo_list>{todo_list}</todo_list>
+    <observations>{observations}</observations>
+    """ + think_prompt
