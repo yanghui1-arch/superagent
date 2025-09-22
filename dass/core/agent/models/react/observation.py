@@ -121,9 +121,9 @@ class SubplanStatus(Observable):
     def obs(self) -> str:
         if not self.todo_list_status:
             if self.solution:
-                return self.solution
+                return f"Subplan: {self.subplan.detailed_info}\tStatus: completed\nSolution:" + self.solution
             if self._process:
-                return self.solve_process
+                return f"Subplan: {self.subplan.detailed_info}\nProcess: " + self.solve_process
             return SubplanStatus.NOT_SOLVED
 
         return f"""Subplan: {self.subplan.detailed_info}\tStatus: {"completed" if self.solved() else "no-completed"}
