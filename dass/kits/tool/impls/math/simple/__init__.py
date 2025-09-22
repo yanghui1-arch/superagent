@@ -35,7 +35,7 @@ def div(a:int|float, b:int|float) -> float:
     Returns:
         float: result of a/b
     """
-    assert b == 0, "Don't pass b=0 to div tool."
+    assert b != 0, "Don't pass b=0 to div tool."
     return float(a / b)
 
 @tool
