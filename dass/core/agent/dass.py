@@ -27,18 +27,10 @@ class SuperAgent(Agent):
     """ SuperAgent, a daily life assistant who can not only tackle trivial troubles but also solve the big problem. 
     
     Args:
-        MAX_CALLING_TOOLS_IN_ONE_CHAIN(ClassVar[int]): max tools calling counts in one chain.
-        MAX_CALLING_CHAINS(ClassVar[int]): max chains of answering one question.
-
         plan(Optional[Plan]): current plan to answer user question. Default to None.
-        current_calling_tools_cnt(int): current calling tools count. Default to 0.
-        current_chains(int): current chains number. Default to 0.
         available_tools(Optional[list[Tool]]): all available tools that can be called by Dass. Default to None.
         system_prompt(Optional[Message]): system prompt of super agent only exist when available_tools is not None. Default to None.
     """
-    
-    MAX_CALLING_TOOLS_IN_ONE_CHAIN: ClassVar[int] = 35
-    MAX_CALLING_CHAINS: ClassVar[int] = 10
 
     available_tools: Optional[list[Tool]] = None
 
@@ -46,16 +38,12 @@ class SuperAgent(Agent):
         """ convert available_tools -> system prompt """
         
         super().model_post_init(context)
-        self.currrent_calling_tools_cnt: int = 0
-        self.current_chains: int = 0
         
         if self.available_tools:
             sys_str = sys_prompt.format(name=self.__class__.__name__, available_tools=self._format_tool_list(self.available_tools))                
             self.system_prompt:Message = Message.system_message(sys_str)
-        self.final_answer_sys_prompt:Message = Message.system_message(final_answer_sys_prompt)
         
         self.plan:Optional[Plan] = None
-        self.observation: Optional[Observation] = None
         self.conversation_uuid: Optional[UUID] = None
 
     async def run(self, user_input:str) -> str:
@@ -142,7 +130,6 @@ class SuperAgent(Agent):
                     )
                     
         return final_solution
-
 
     async def planning(self, user_question:str) -> Plan | str:
         """ Super agent plan process
@@ -285,13 +272,10 @@ class SuperAgent(Agent):
 
     def _parse_think(self, think_response:str) -> ThinkResult:
         """ parse think content
-        CANNOT parse tool calling action. Passing think before ensuring the think content is not tool calling
-        Super agent has several selections during thinking. The function is to parse the think reponse and try to parse
-        which selection super agent choose.
-        NOTICE: I dont find a good method of how super agent output fix content and how to parse it.
+        Only support content with SOLVED_TAG and OBSCURE_QUESTION_TAG 
         
         Args:
-            think(str): think content which is not tool calling
+            think_response(str): think content which is not tool calling
 
         Returns:
             ThinkResult: think result
@@ -314,8 +298,13 @@ class SuperAgent(Agent):
 
         raise ValueError("Super agent think response is not in a valid format. Try to make super agent think again with different llm_gen_params.")
 
-    async def _request_llm(self, messages:list[Message], tools=None):
-        """ request a list of message to llm """
+    async def _request_llm(self, messages:list[Message], tools:Optional[list[Tool]]=None):
+        """ request a list of message to llm 
+        
+        Args:
+            messages(list[Message]): messages for llm
+            tools(Optional[list[Tool]]): tools that llm can call. Default to None.
+        """
         
         if tools is None:
             return await self.llm.generate(
