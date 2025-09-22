@@ -1,3 +1,5 @@
+from ._solve_prompt import start_solve_prologue
+
 __all__ = [
     "TODO_LIST_TAG",
     "NO_COMPLETED_TAG",
@@ -5,7 +7,8 @@ __all__ = [
     "OBSCURE_QUESTION_TAG",
     "SOLVED_TAG",
     "think_prompt",
-    "sys_prompt"
+    "sys_prompt",
+    "start_solve_prologue"
 ]
 
 ##################################################
@@ -31,6 +34,14 @@ Outer available tools for you to get more information that you not have inner mo
 {available_tools}
 </available_tools>
 
+"""
+
+final_answer_sys_prompt = """You are a helpful daily assistant and your name is {name}.
+In natural {name} is a `Large Language Model` so your knowledge container is not unlimited. It's not shameful to acknowledge it. 
+Fortunately someone will tackle something trouble thing that you are unable to do it without tools.
+They are extensions for you to make you smarter and act like human.
+You not only have be capable to tackle with some trivial things but also solve some big problems.
+Your duty is to make user satisfied and make he/she comfortable.You have to be more patient to explain princeples, express your emotions and chat slowly like his/her friend.
 """
 
 
@@ -72,7 +83,7 @@ Args:
     NO_COMPLETED_TAG: no completed tag in markdown
 """
 
-plan_prompt = """You are a master of making plans to solve complex and difficult problems.
+plan_prompt = f"""You are a master of making plans to solve complex and difficult problems.
 You have two choices to take.
     1. output your answer if you think <user_question> is very easy and not refered to number calculation else choose 2.
     2. make a plan to solve the <user_question>
@@ -95,10 +106,23 @@ Notice that the middle content should be started with `{SOLVED_TAG}.`.
     {EASY_TAG}{SOLVED_TAG}The solution is at here.{EASY_END_TAG}
     ```
 If the user question is about calculation and the refered number is very big or the process steps are complex. You should make plans for it. It's not easy for you.
-<user_question>
-{user_question}
-</user_question>
 """
+
+def build_plan_prompt(user_question:str) -> str:
+    """ build plan prompt
+    
+    Args:
+        user_question(str): user question
+    
+    Returns:
+        str: plan_prompt
+    """
+
+    return plan_prompt + f"""
+    <user_question>
+    {user_question}
+    </user_question>
+    """ 
 
 
 """ agent think prompt
@@ -125,52 +149,33 @@ Args:
     observations: current observations. It's all observations not just one probably.
 """
 
-think_prompt = f"""Based on `<subplan>`, `<todo_list>` and `<observations>` select one choice following.
-1. make a todo list in following situations.
-    1.1 the `<subplan>` is complex in logic.
-    1.2 `<subplan>` is about calculation and refered numbers are very big.
-    The output format should be started with `{TODO_LIST_TAG}`: .
-    For example:
-    ```
-    {MAKE_TODO_LIST_START_TAG}
-    {TODO_LIST_TAG}:
-    {NO_COMPLETED_TAG}... {ORDER_START_TAG}1{ORDER_END_TAG}
-    {NO_COMPLETED_TAG}... {ORDER_START_TAG}2{ORDER_END_TAG}
-    {NO_COMPLETED_TAG}... {ORDER_START_TAG}3{ORDER_END_TAG}
-    {MAKE_TODO_LIST_END_TAG}
-    ```
-    The number included in {ORDER_START_TAG}{ORDER_END_TAG} is the todo items executing order. If one todo item can be executed paralleling with another todo item their order should be the same.
-    For example:
-        I have five todo items in my todo list. The first and the third can be executed parallely and the second and fourth should be executed following the first and the third. Finally all todo items are all executed the fifth todo item is executed.
-        Based on aboving saying the first and the third item order is 1. The second and the fourth order is 2. Finally the fifth todo item order is 3.
-
-2. fix it if the latest observation raise error. The probable reason: 
-    3.1 You select a wrong tool
-    3.2 You don't give the right arguments.
-    3.3 The tool is wrong during developer implementing it.
-3. output the result if you think you can solve it directly or you can solve it with `<observations>` content or `<subplan>` is an easy question.
+think_prompt = f"""Based on all `<subplan>` and tool message content, then select a following choice.
+1. output the result if you think you can solve it directly or you can solve it with `<observations>` content or `<subplan>` is an easy question.
    The output format should be started with `{SOLVED_TAG}`:. 
    For example:
     ```
     {SOLVED_TAG}: I have successfully solve the problem. Now the following content is answer. ...
     ```
-4. request user for more information to solve the problem. Sometimes `<subplan>` is obscure because not everyone
+
+2. select an available tool to get some valuable information due to the `<subplan>` content complexity. 
+
+3. request user for more information to solve the problem. Sometimes `<subplan>` is obscure because not everyone
    are capable of clearly describing their needs or questions. You should be patient to request more information about it.
    The request format should be started with `{OBSCURE_QUESTION_TAG}`: .
    For example: 
    ```
    {OBSCURE_QUESTION_TAG}: I'm so sorry that I need more information to solve the question. ...
    ```
-
+4. fix it if the latest observation raise error. Output satisfing openai format tool funciton and don't output other things.
+The probable reason: 
+    4.1 You select a wrong tool
+    4.2 You don't give the right arguments.
+    4.3 The tool is wrong during developer implementing it.
 Notice:
     1. Due to you are a general task solving artificial intelligence and be human-like friend, your facing `<subplan>`
     is not always serious tech/study/work problem and other similiar topics. If `<subplan>` is a relax topic or just
-    for chat. You can be more humour and more considerate. 
-    2. The output of todo_list should be a list which satisfied a markdown format. 
+    for chat. You can be more humour and more considerate.
 """
 
-def build_think_prompt(subplan, todo_list, observations) -> str:
-    return f"""<subplan>{subplan}</subplan>
-    <todo_list>{todo_list}</todo_list>
-    <observations>{observations}</observations>
-    """ + think_prompt
+def build_think_prompt(subplan) -> str:
+    return f"<subplan>{subplan}</subplan>" + think_prompt

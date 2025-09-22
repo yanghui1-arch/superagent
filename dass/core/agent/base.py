@@ -20,6 +20,7 @@ class Agent(ABC, BaseModel):
         llm(LLM): llm
         llm_gen_params(Optional[LLMGenParams]): llm generation parameters. Default to `None`.
         memory_engine(Optional[MemoryEngine]): memory engine of agent. Default to `None`.
+        context_manager(ContextEngine): manager llm context
     """
 
     llm_config:LLMConfig
